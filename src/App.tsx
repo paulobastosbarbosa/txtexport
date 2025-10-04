@@ -3,10 +3,11 @@ import { ExportLayout } from './lib/supabase';
 import LayoutList from './components/LayoutList';
 import LayoutConfigRHiD from './components/LayoutConfigRHiD';
 import EventManagement from './components/EventManagement';
+import EventLaunches from './components/EventLaunches';
 import EmployeeManagement from './components/EmployeeManagement';
-import { Settings, FileText, Calendar, Users } from 'lucide-react';
+import { Settings, FileText, Calendar, Users, CheckSquare } from 'lucide-react';
 
-type TabType = 'layouts' | 'events' | 'employees';
+type TabType = 'layouts' | 'events' | 'launches' | 'employees';
 
 function App() {
   const [selectedLayout, setSelectedLayout] = useState<ExportLayout | null>(null);
@@ -49,7 +50,18 @@ function App() {
               }`}
             >
               <Calendar className="w-4 h-4" />
-              Eventos da Folha
+              Cadastro de Eventos
+            </button>
+            <button
+              onClick={() => setActiveTab('launches')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors text-sm font-medium ${
+                activeTab === 'launches'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <CheckSquare className="w-4 h-4" />
+              Lançamento de Eventos
             </button>
             <button
               onClick={() => setActiveTab('employees')}
@@ -81,6 +93,10 @@ function App() {
 
         {activeTab === 'events' && (
           <EventManagement />
+        )}
+
+        {activeTab === 'launches' && (
+          <EventLaunches />
         )}
 
         {activeTab === 'employees' && (

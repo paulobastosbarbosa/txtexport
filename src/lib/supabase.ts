@@ -21,6 +21,13 @@ export type ExportLayout = {
   id: string;
   name: string;
   description: string | null;
+  field_separator: string;
+  decimal_separator: string;
+  report_type: string;
+  multiply_extra_factor: boolean;
+  multiply_night_factor: boolean;
+  extra_factor: number;
+  night_factor: number;
   created_at: string;
   updated_at: string;
 };

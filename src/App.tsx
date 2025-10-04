@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { ExportLayout } from './lib/supabase';
 import LayoutList from './components/LayoutList';
 import LayoutConfigRHiD from './components/LayoutConfigRHiD';
+import LayoutSettings from './components/LayoutSettings';
 import EventManagement from './components/EventManagement';
 import EventLaunches from './components/EventLaunches';
 import EmployeeManagement from './components/EmployeeManagement';
 import PayrollExport from './components/PayrollExport';
-import { Settings, FileText, Calendar, Users, CheckSquare, Download } from 'lucide-react';
+import { Settings, FileText, Calendar, Users, CheckSquare, Download, Sliders } from 'lucide-react';
 
-type TabType = 'layouts' | 'events' | 'launches' | 'employees' | 'export';
+type TabType = 'layouts' | 'settings' | 'events' | 'launches' | 'employees' | 'export';
 
 function App() {
   const [selectedLayout, setSelectedLayout] = useState<ExportLayout | null>(null);
@@ -40,7 +41,18 @@ function App() {
               }`}
             >
               <FileText className="w-4 h-4" />
-              Layouts e Configurações
+              Campos do Layout
+            </button>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors text-sm font-medium ${
+                activeTab === 'settings'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <Sliders className="w-4 h-4" />
+              Configurações
             </button>
             <button
               onClick={() => setActiveTab('events')}
@@ -99,6 +111,27 @@ function App() {
             </div>
             <div className="lg:col-span-2">
               <LayoutConfigRHiD layout={selectedLayout} />
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'settings' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1">
+              <LayoutList
+                onSelectLayout={setSelectedLayout}
+                selectedLayoutId={selectedLayout?.id || null}
+              />
+            </div>
+            <div className="lg:col-span-2">
+              <LayoutSettings
+                layout={selectedLayout}
+                onUpdate={() => {
+                  if (selectedLayout) {
+                    setSelectedLayout({ ...selectedLayout });
+                  }
+                }}
+              />
             </div>
           </div>
         )}

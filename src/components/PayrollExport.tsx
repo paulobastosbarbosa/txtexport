@@ -6,6 +6,13 @@ type ExportLayout = {
   id: string;
   name: string;
   description: string | null;
+  field_separator: string;
+  decimal_separator: string;
+  report_type: string;
+  multiply_extra_factor: boolean;
+  multiply_night_factor: boolean;
+  extra_factor: number;
+  night_factor: number;
 };
 
 type LayoutField = {
@@ -74,7 +81,43 @@ export default function PayrollExport() {
     }
   };
 
-  const formatField = (field: LayoutField, value: any, launch: EventLaunch): string => {
+  const getSeparatorChar = (separator: string): string => {
+    switch (separator) {
+      case 'space': return ' ';
+      case 'dash': return '-';
+      case 'dot': return '.';
+      case 'underscore': return '_';
+      case 'semicolon': return ';';
+      default: return '';
+    }
+  };
+
+  const formatDecimal = (value: number, decimalSeparator: string): string => {
+    const valueStr = value.toFixed(2);
+
+    if (decimalSeparator === 'none') {
+      return valueStr.replace('.', '');
+    } else if (decimalSeparator === 'comma') {
+      return valueStr.replace('.', ',');
+    }
+    return valueStr;
+  };
+
+  const applyFactors = (value: number, layout: ExportLayout, eventCode: string): number => {
+    let result = value;
+
+    if (layout.multiply_extra_factor && eventCode.includes('EXTRA')) {
+      result *= layout.extra_factor;
+    }
+
+    if (layout.multiply_night_factor && eventCode.includes('NOTURNO')) {
+      result *= layout.night_factor;
+    }
+
+    return result;
+  };
+
+  const formatField = (field: LayoutField, value: any, launch: EventLaunch, layout: ExportLayout): string => {
     const pattern = field.format_pattern || '';
     let result = value?.toString() || field.default_value || '';
 
@@ -96,11 +139,13 @@ export default function PayrollExport() {
         result = new Date(launch.launch_date).getFullYear().toString();
         break;
       case 'Valor (Inteiro)':
-        const intPart = Math.floor(launch.total_value);
+        let adjustedValue = applyFactors(launch.total_value, layout, launch.event?.code || '');
+        const intPart = Math.floor(adjustedValue);
         result = intPart.toString();
         break;
       case 'Valor (Decimal)':
-        const decPart = Math.round((launch.total_value - Math.floor(launch.total_value)) * 100);
+        let adjValue = applyFactors(launch.total_value, layout, launch.event?.code || '');
+        const decPart = Math.round((adjValue - Math.floor(adjValue)) * 100);
         result = decPart.toString().padStart(2, '0');
         break;
       case 'Horas (Inteiro)':
@@ -125,6 +170,16 @@ export default function PayrollExport() {
 
     setLoading(true);
     try {
+      const { data: layoutData, error: layoutError } = await supabase
+        .from('export_layouts')
+        .select('*')
+        .eq('id', selectedLayoutId)
+        .single();
+
+      if (layoutError) throw layoutError;
+
+      const layout = layoutData as ExportLayout;
+
       const { data: fields, error: fieldsError } = await supabase
         .from('layout_fields')
         .select('*')
@@ -142,6 +197,7 @@ export default function PayrollExport() {
         `)
         .gte('launch_date', startDate)
         .lte('launch_date', endDate)
+        .order('employee_id')
         .order('launch_date');
 
       if (launchesError) throw launchesError;
@@ -152,17 +208,67 @@ export default function PayrollExport() {
         return;
       }
 
+      const separator = getSeparatorChar(layout.field_separator);
       const lines: string[] = [];
 
-      for (const launch of launches) {
-        const lineFields: string[] = [];
+      if (layout.report_type === 'one_event_per_line') {
+        for (const launch of launches) {
+          const lineFields: string[] = [];
 
-        for (const field of fields || []) {
-          const formattedValue = formatField(field, null, launch);
-          lineFields.push(formattedValue);
+          for (const field of fields || []) {
+            const formattedValue = formatField(field, null, launch, layout);
+            lineFields.push(formattedValue);
+          }
+
+          lines.push(lineFields.join(separator));
+        }
+      } else {
+        const employeeMap = new Map<string, EventLaunch[]>();
+
+        for (const launch of launches) {
+          const empId = launch.employee_id;
+          if (!employeeMap.has(empId)) {
+            employeeMap.set(empId, []);
+          }
+          employeeMap.get(empId)!.push(launch);
         }
 
-        lines.push(lineFields.join(''));
+        for (const [employeeId, empLaunches] of employeeMap) {
+          const firstLaunch = empLaunches[0];
+          const lineFields: string[] = [];
+
+          for (const field of fields || []) {
+            let value = '';
+
+            if (field.field_name.includes('Valor')) {
+              const totalValue = empLaunches.reduce((sum, l) => {
+                const adjustedVal = applyFactors(l.total_value, layout, l.event?.code || '');
+                return sum + adjustedVal;
+              }, 0);
+
+              if (field.field_name === 'Valor (Inteiro)') {
+                value = Math.floor(totalValue).toString();
+              } else if (field.field_name === 'Valor (Decimal)') {
+                const decPart = Math.round((totalValue - Math.floor(totalValue)) * 100);
+                value = decPart.toString().padStart(2, '0');
+              } else {
+                value = formatDecimal(totalValue, layout.decimal_separator);
+              }
+            } else {
+              value = formatField(field, null, firstLaunch, layout);
+            }
+
+            const pattern = field.format_pattern || '';
+            if (pattern.includes('0') && value) {
+              const targetLength = pattern.length;
+              value = value.padStart(targetLength, '0');
+            }
+
+            lineFields.push(value);
+          }
+
+          lines.push(lineFields.join(separator));
+        }
       }
 
       const exportContent = lines.join('\n');
@@ -223,7 +329,7 @@ export default function PayrollExport() {
           </select>
           {layouts.length === 0 && (
             <p className="text-sm text-amber-600 mt-2">
-              Nenhum layout configurado. Configure um layout na aba "Layouts e Configurações".
+              Nenhum layout configurado. Configure um layout na aba "Campos do Layout".
             </p>
           )}
         </div>
@@ -304,3 +410,6 @@ export default function PayrollExport() {
     </div>
   );
 }
+
+
+export default PayrollExport

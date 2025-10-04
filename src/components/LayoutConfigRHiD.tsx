@@ -158,6 +158,7 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
           default_value: null,
           fill_type: 'spaces',
           date_format: 'ddmmaaaa',
+          decimal_places: 0,
           alignment: 'left'
         }])
         .select()
@@ -582,23 +583,54 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
                             <option value="dash">Traço</option>
                           </select>
                         </div>
-                        <div>
+                        <div className="space-y-1">
                           <select
                             value={field.date_format || 'ddmmaaaa'}
                             onChange={(e) => handleUpdateField(field.id, { date_format: e.target.value })}
                             className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
                           >
-                            <option value="ddmmaaaa">ddmmaaaa</option>
-                            <option value="ddmmaaaa_slash">dd/mm/aaaa</option>
-                            <option value="ddmmaa_slash">dd/mm/aa</option>
-                            <option value="aaaammdd">aaaammdd</option>
-                            <option value="aaaa_mm_dd">aaaa-mm-dd</option>
-                            <option value="ddmmaa">ddmmaa</option>
-                            <option value="aaaamm">aaaamm</option>
-                            <option value="mmaaaa">mmaaaa</option>
-                            <option value="mm">mm</option>
-                            <option value="aaaa">aaaa</option>
+                            {field.field_source?.includes('date') || field.field_source?.includes('data') ? (
+                              <>
+                                <option value="ddmmaaaa">ddmmaaaa</option>
+                                <option value="ddmmaaaa_slash">dd/mm/aaaa</option>
+                                <option value="ddmmaa_slash">dd/mm/aa</option>
+                                <option value="aaaammdd">aaaammdd</option>
+                                <option value="aaaa_mm_dd">aaaa-mm-dd</option>
+                                <option value="ddmmaa">ddmmaa</option>
+                                <option value="aaaamm">aaaamm</option>
+                                <option value="mmaaaa">mmaaaa</option>
+                                <option value="mm">mm</option>
+                                <option value="aaaa">aaaa</option>
+                              </>
+                            ) : field.field_source?.includes('code') || field.field_source?.includes('codigo') ? (
+                              <>
+                                <option value="aaaaa">aaaaa</option>
+                                <option value="aaaaa_hifenizado">aaaaa-hifenizado</option>
+                              </>
+                            ) : field.field_source?.includes('value') || field.field_source?.includes('valor') ? (
+                              <>
+                                <option value="hhmm">hhmm</option>
+                                <option value="decimal">decimal</option>
+                              </>
+                            ) : (
+                              <>
+                                <option value="texto">texto</option>
+                              </>
+                            )}
                           </select>
+                          {field.date_format === 'decimal' && (
+                            <div className="flex items-center gap-1">
+                              <label className="text-xs text-gray-600 whitespace-nowrap">Casas decimais:</label>
+                              <input
+                                type="number"
+                                min="0"
+                                max="4"
+                                value={field.decimal_places || 0}
+                                onChange={(e) => handleUpdateField(field.id, { decimal_places: parseInt(e.target.value) || 0 })}
+                                className="w-12 px-1 py-0.5 text-xs border border-gray-300 rounded"
+                              />
+                            </div>
+                          )}
                         </div>
                         <div>
                           <select

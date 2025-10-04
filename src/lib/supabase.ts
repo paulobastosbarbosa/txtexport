@@ -46,6 +46,7 @@ export type LayoutField = {
   field_source: string | null;
   fill_type: string;
   date_format: string;
+  decimal_places: number;
   alignment: string;
   created_at: string;
 };

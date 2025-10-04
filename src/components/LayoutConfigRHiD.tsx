@@ -597,9 +597,10 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
                         </div>
                         <div className="space-y-1">
                           {(field.field_source?.includes('date') || field.field_source?.includes('data') ||
-                            field.field_source?.includes('mes') || field.field_source?.includes('ano')) ? (
+                            field.field_source?.includes('dia') || field.field_source?.includes('mes') ||
+                            field.field_source?.includes('ano')) ? (
                             <select
-                              value={field.date_format || 'yyyymmdd'}
+                              value={field.date_format || 'aaaammdd'}
                               onChange={(e) => handleUpdateField(field.id, { date_format: e.target.value })}
                               className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
                             >
@@ -613,6 +614,7 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
                               <option value="aaaamm">aaaamm</option>
                               <option value="mmaaaa">mmaaaa</option>
                               <option value="mm">mm</option>
+                              <option value="dd">dd</option>
                             </select>
                           ) : (field.field_source?.includes('code') || field.field_source?.includes('codigo') ||
                                 field.field_source?.includes('value') || field.field_source?.includes('valor')) ? (

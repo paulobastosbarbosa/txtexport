@@ -23,6 +23,13 @@ type LayoutField = {
   format_pattern: string | null;
   default_value: string | null;
   order_position: number;
+  field_size: number;
+  field_source: string | null;
+  fill_type: string;
+  date_format: string;
+  decimal_places: number;
+  alignment: string;
+  is_aggregation_field: boolean;
 };
 
 type EventLaunch = {
@@ -117,46 +124,77 @@ export default function PayrollExport() {
     return result;
   };
 
-  const formatField = (field: LayoutField, value: any, launch: EventLaunch, layout: ExportLayout): string => {
-    const pattern = field.format_pattern || '';
-    let result = value?.toString() || field.default_value || '';
+  const formatDateValue = (date: Date, format: string): string => {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const yearShort = year.toString().slice(-2);
 
-    switch (field.field_name) {
-      case 'Nº Folha da Empresa':
-        result = launch.employee?.company_payroll_number || field.default_value || '000000';
-        break;
-      case 'Nº Folha':
-        result = launch.employee?.payroll_number || field.default_value || '000000';
-        break;
-      case 'Código do Evento':
-        result = launch.event?.code || field.default_value || '0000';
-        break;
-      case 'Data Fim (Mês)':
-        const month = new Date(launch.launch_date).getMonth() + 1;
-        result = month.toString().padStart(2, '0');
-        break;
-      case 'Data Fim (Ano)':
-        result = new Date(launch.launch_date).getFullYear().toString();
-        break;
-      case 'Valor (Inteiro)':
-        let adjustedValue = applyFactors(launch.total_value, layout, launch.event?.code || '');
-        const intPart = Math.floor(adjustedValue);
-        result = intPart.toString();
-        break;
-      case 'Valor (Decimal)':
-        let adjValue = applyFactors(launch.total_value, layout, launch.event?.code || '');
-        const decPart = Math.round((adjValue - Math.floor(adjValue)) * 100);
-        result = decPart.toString().padStart(2, '0');
-        break;
-      case 'Horas (Inteiro)':
-        const hours = Math.floor(launch.quantity);
-        result = hours.toString();
-        break;
+    switch (format) {
+      case 'aaaa': return year.toString();
+      case 'ddmmaaaa': return `${day}${month}${year}`;
+      case 'dd/mm/aaaa': return `${day}/${month}/${year}`;
+      case 'dd/mm/aa': return `${day}/${month}/${yearShort}`;
+      case 'aaaammdd': return `${year}${month}${day}`;
+      case 'aaaa-mm-dd': return `${year}-${month}-${day}`;
+      case 'ddmmaa': return `${day}${month}${yearShort}`;
+      case 'aaaamm': return `${year}${month}`;
+      case 'mmaaaa': return `${month}${year}`;
+      case 'mm': return month;
+      case 'dd': return day;
+      default: return `${year}${month}${day}`;
+    }
+  };
+
+  const formatField = (field: LayoutField, value: any, launch: EventLaunch, layout: ExportLayout): string => {
+    let result = '';
+    const source = field.field_source || '';
+    const launchDate = new Date(launch.launch_date);
+
+    // Determine value based on field source
+    if (source === 'numero_folha_empresa' || source === 'company_payroll_number') {
+      result = launch.employee?.company_payroll_number || '';
+    } else if (source === 'numero_matricula' || source === 'payroll_number') {
+      result = launch.employee?.payroll_number || '';
+    } else if (source === 'nome_funcionario') {
+      result = launch.employee?.name || '';
+    } else if (source === 'codigo_funcionario' || source === 'employee_code') {
+      result = launch.employee?.employee_code || '';
+    } else if (source.includes('codigo') && source.includes('evento')) {
+      result = launch.event?.code || '';
+    } else if (source.includes('data') || source.includes('date') || source.includes('dia') || source.includes('mes') || source.includes('ano')) {
+      // Apply date formatting
+      result = formatDateValue(launchDate, field.date_format || 'aaaammdd');
+    } else if (source.includes('valor') || source.includes('value')) {
+      const adjustedValue = applyFactors(launch.total_value, layout, launch.event?.code || '');
+      const decimalPlaces = field.decimal_places ?? 0;
+      if (decimalPlaces > 0) {
+        result = adjustedValue.toFixed(decimalPlaces).replace('.', '');
+      } else {
+        result = Math.floor(adjustedValue).toString();
+      }
+    } else if (source.includes('hora') || source.includes('hour')) {
+      result = launch.quantity.toString();
+    } else {
+      result = value?.toString() || field.default_value || '';
     }
 
-    if (pattern.includes('0')) {
-      const targetLength = pattern.length;
-      result = result.padStart(targetLength, '0');
+    // Apply fill type and size
+    const targetSize = field.field_size || result.length;
+    const fillType = field.fill_type || 'spaces';
+    const alignment = field.alignment || 'left';
+
+    if (result.length < targetSize) {
+      const fillChar = fillType === 'zeros' ? '0' : fillType === 'dash' ? '-' : ' ';
+
+      if (alignment === 'right') {
+        result = result.padStart(targetSize, fillChar);
+      } else {
+        result = result.padEnd(targetSize, fillChar);
+      }
+    } else if (result.length > targetSize) {
+      // Truncate if too long
+      result = result.substring(0, targetSize);
     }
 
     return result;

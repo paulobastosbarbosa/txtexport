@@ -184,18 +184,22 @@ export default function PayrollExport() {
     const targetSize = field.field_size || result.length;
     const fillType = field.fill_type || 'spaces';
     const alignment = field.alignment || 'left';
+    const fillChar = fillType === 'zeros' ? '0' : fillType === 'dash' ? '-' : ' ';
 
+    // First truncate if too long
+    if (result.length > targetSize) {
+      result = result.substring(0, targetSize);
+    }
+
+    // Then apply padding based on alignment
     if (result.length < targetSize) {
-      const fillChar = fillType === 'zeros' ? '0' : fillType === 'dash' ? '-' : ' ';
-
       if (alignment === 'right') {
+        // Right aligned: fill characters go on the left
         result = result.padStart(targetSize, fillChar);
       } else {
+        // Left aligned: fill characters go on the right
         result = result.padEnd(targetSize, fillChar);
       }
-    } else if (result.length > targetSize) {
-      // Truncate if too long
-      result = result.substring(0, targetSize);
     }
 
     return result;

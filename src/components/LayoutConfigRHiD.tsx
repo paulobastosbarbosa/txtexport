@@ -751,13 +751,23 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
                           }
 
                           // Apply alignment and fill
-                          if (field.alignment === 'right') {
-                            exampleValue = exampleValue.padStart(field.field_size, field.fill_type === 'zeros' ? '0' : ' ');
-                          } else {
-                            exampleValue = exampleValue.padEnd(field.field_size, field.fill_type === 'zeros' ? '0' : ' ');
+                          const fillChar = field.fill_type === 'zeros' ? '0' : field.fill_type === 'dash' ? '-' : ' ';
+
+                          // First truncate if too long
+                          if (exampleValue.length > field.field_size) {
+                            exampleValue = exampleValue.substring(0, field.field_size);
                           }
 
-                          exampleValue = exampleValue.substring(0, field.field_size);
+                          // Then apply padding based on alignment
+                          if (exampleValue.length < field.field_size) {
+                            if (field.alignment === 'right') {
+                              // Right aligned: fill characters go on the left
+                              exampleValue = exampleValue.padStart(field.field_size, fillChar);
+                            } else {
+                              // Left aligned: fill characters go on the right
+                              exampleValue = exampleValue.padEnd(field.field_size, fillChar);
+                            }
+                          }
 
                           return (
                             <span

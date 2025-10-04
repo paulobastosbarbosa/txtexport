@@ -60,6 +60,7 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
   const [activeTab, setActiveTab] = useState<'campos' | 'eventos'>('campos');
   const [fields, setFields] = useState<LayoutField[]>([]);
   const [events, setEvents] = useState<PayrollEvent[]>([]);
+  const [availableEvents, setAvailableEvents] = useState<Array<{ code: string; description: string }>>([]);
   const [loading, setLoading] = useState(false);
 
   const [layoutName, setLayoutName] = useState('');
@@ -89,8 +90,23 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
       setNightFactor(layout.night_factor || 1.2);
       loadFields();
       loadEvents();
+      loadAvailableEvents();
     }
   }, [layout]);
+
+  const loadAvailableEvents = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .select('code, description')
+        .order('code');
+
+      if (error) throw error;
+      setAvailableEvents(data || []);
+    } catch (error) {
+      console.error('Error loading available events:', error);
+    }
+  };
 
   const loadFields = async () => {
     if (!layout) return;
@@ -615,6 +631,19 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
                               <option value="mmaaaa">mmaaaa</option>
                               <option value="mm">mm</option>
                               <option value="dd">dd</option>
+                            </select>
+                          ) : field.field_source === 'codigo_evento' ? (
+                            <select
+                              value={field.default_value || ''}
+                              onChange={(e) => handleUpdateField(field.id, { default_value: e.target.value })}
+                              className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
+                            >
+                              <option value="">Selecione um código</option>
+                              {availableEvents.map((event) => (
+                                <option key={event.code} value={event.code}>
+                                  {event.code} - {event.description}
+                                </option>
+                              ))}
                             </select>
                           ) : (field.field_source?.includes('code') || field.field_source?.includes('codigo') ||
                                 field.field_source?.includes('value') || field.field_source?.includes('valor')) ? (

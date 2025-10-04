@@ -160,8 +160,9 @@ export default function PayrollExport() {
       result = launch.employee?.name || '';
     } else if (source === 'codigo_funcionario' || source === 'employee_code') {
       result = launch.employee?.employee_code || '';
-    } else if (source.includes('codigo') && source.includes('evento')) {
-      result = launch.event?.code || '';
+    } else if (source === 'codigo_evento') {
+      // Use default_value if set (fixed event code), otherwise use the event code from launch
+      result = field.default_value || launch.event?.code || '';
     } else if (source.includes('data') || source.includes('date') || source.includes('dia') || source.includes('mes') || source.includes('ano')) {
       // Apply date formatting
       result = formatDateValue(launchDate, field.date_format || 'aaaammdd');

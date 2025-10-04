@@ -80,14 +80,14 @@ function App() {
         )}
 
         {activeTab === 'events' && (
-          <EventManagement layout={selectedLayout} />
+          <EventManagement />
         )}
 
         {activeTab === 'employees' && (
           <EmployeeManagement />
         )}
 
-        {activeTab !== 'employees' && !selectedLayout && (
+        {activeTab === 'layouts' && !selectedLayout && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
             <strong>Dica:</strong> Selecione um layout na lista à esquerda para começar a configurar eventos e exportações.
           </div>

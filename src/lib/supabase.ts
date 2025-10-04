@@ -56,6 +56,10 @@ export type PayrollEvent = {
   event_code: string;
   event_name: string;
   description: string | null;
+  time_format: string;
+  decimal_places: number;
+  fill_type: string;
+  alignment: string;
   created_at: string;
   updated_at: string;
 };

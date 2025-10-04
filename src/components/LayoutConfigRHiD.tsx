@@ -242,7 +242,11 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
           layout_id: layout.id,
           event_name: newEventName,
           event_code: newEventCode || '0000',
-          description: null
+          description: null,
+          time_format: 'hhmm',
+          decimal_places: 0,
+          fill_type: 'spaces',
+          alignment: 'left'
         }])
         .select()
         .single();
@@ -254,6 +258,39 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
     } catch (error) {
       console.error('Error adding event:', error);
       alert('Erro ao adicionar evento');
+    }
+  };
+
+  const handleUpdateEvent = async (eventId: string, updates: Partial<PayrollEvent>) => {
+    try {
+      const { error } = await supabase
+        .from('payroll_events')
+        .update(updates)
+        .eq('id', eventId);
+
+      if (error) throw error;
+
+      setEvents(events.map(e => e.id === eventId ? { ...e, ...updates } : e));
+    } catch (error) {
+      console.error('Error updating event:', error);
+      alert('Erro ao atualizar evento');
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!confirm('Deseja remover este evento?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('payroll_events')
+        .delete()
+        .eq('id', eventId);
+
+      if (error) throw error;
+      setEvents(events.filter(e => e.id !== eventId));
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      alert('Erro ao excluir evento');
     }
   };
 
@@ -636,9 +673,13 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
 
             <div className="border-t pt-6">
               <div className="bg-gray-50 rounded p-4">
-                <div className="grid grid-cols-2 gap-4 mb-2 font-medium text-sm text-gray-700">
+                <div className="grid grid-cols-6 gap-2 mb-2 font-medium text-xs text-gray-700">
                   <div>Nome do evento</div>
-                  <div>Código do evento</div>
+                  <div>Código</div>
+                  <div>Formato</div>
+                  <div>Preenchimento</div>
+                  <div>Alinhamento</div>
+                  <div>Ações</div>
                 </div>
                 {events.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
@@ -647,9 +688,71 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
                 ) : (
                   <div className="space-y-2">
                     {events.map((event) => (
-                      <div key={event.id} className="grid grid-cols-2 gap-4 items-center bg-white rounded p-3 border border-gray-200">
-                        <div className="text-sm text-gray-900">{event.event_name}</div>
-                        <div className="text-sm font-mono text-gray-600">{event.event_code}</div>
+                      <div key={event.id} className="bg-white rounded p-3 border border-gray-200">
+                        <div className="grid grid-cols-6 gap-2 items-start">
+                          <div className="text-xs text-gray-900 font-medium pt-2">{event.event_name}</div>
+                          <div>
+                            <input
+                              type="text"
+                              value={event.event_code}
+                              onChange={(e) => handleUpdateEvent(event.id, { event_code: e.target.value })}
+                              className="w-full px-2 py-1 text-xs border border-blue-400 rounded font-mono"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <select
+                              value={event.time_format || 'hhmm'}
+                              onChange={(e) => handleUpdateEvent(event.id, { time_format: e.target.value })}
+                              className="w-full px-2 py-1 text-xs border border-gray-900 rounded"
+                            >
+                              <option value="hhmm">hhmm</option>
+                              <option value="decimal">decimal</option>
+                            </select>
+                            {event.time_format === 'decimal' && (
+                              <div className="flex items-center gap-1">
+                                <label className="text-xs text-gray-600">Casas decimais:</label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="4"
+                                  value={event.decimal_places || 0}
+                                  onChange={(e) => handleUpdateEvent(event.id, { decimal_places: parseInt(e.target.value) || 0 })}
+                                  className="w-12 px-1 py-0.5 text-xs border border-gray-300 rounded"
+                                />
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <select
+                              value={event.fill_type || 'spaces'}
+                              onChange={(e) => handleUpdateEvent(event.id, { fill_type: e.target.value })}
+                              className="w-full px-2 py-1 text-xs border-2 border-yellow-400 rounded"
+                            >
+                              <option value="spaces">Espaços</option>
+                              <option value="zeros">Zeros</option>
+                              <option value="dash">Traços</option>
+                            </select>
+                          </div>
+                          <div>
+                            <select
+                              value={event.alignment || 'left'}
+                              onChange={(e) => handleUpdateEvent(event.id, { alignment: e.target.value })}
+                              className="w-full px-2 py-1 text-xs border-2 border-gray-400 rounded"
+                            >
+                              <option value="left">Esquerda</option>
+                              <option value="right">Direita</option>
+                            </select>
+                          </div>
+                          <div>
+                            <button
+                              onClick={() => handleDeleteEvent(event.id)}
+                              className="w-full p-1.5 bg-red-500 text-white rounded hover:bg-red-600 transition-colors flex items-center justify-center"
+                              title="Excluir evento"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>

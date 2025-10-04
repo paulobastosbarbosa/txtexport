@@ -310,7 +310,7 @@ export default function EmployeeManagement() {
                   <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Nome</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Documento</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Nº Folha Empresa</th>
-                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Nº Folha</th>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Nº Matrícula</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Status</th>
                   <th className="text-right px-4 py-3 text-sm font-medium text-gray-700">Ações</th>
                 </tr>
@@ -416,7 +416,7 @@ export default function EmployeeManagement() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nº Folha
+                    Nº Matrícula
                   </label>
                   <input
                     type="text"
@@ -498,7 +498,7 @@ export default function EmployeeManagement() {
                             <th className="text-left px-3 py-2 text-xs font-medium text-gray-700">Nome</th>
                             <th className="text-left px-3 py-2 text-xs font-medium text-gray-700">Documento</th>
                             <th className="text-left px-3 py-2 text-xs font-medium text-gray-700">Nº Folha Empresa</th>
-                            <th className="text-left px-3 py-2 text-xs font-medium text-gray-700">Nº Folha</th>
+                            <th className="text-left px-3 py-2 text-xs font-medium text-gray-700">Nº Matrícula</th>
                             <th className="text-left px-3 py-2 text-xs font-medium text-gray-700">Status</th>
                           </tr>
                         </thead>

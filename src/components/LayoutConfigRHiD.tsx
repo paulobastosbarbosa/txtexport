@@ -35,7 +35,7 @@ const predefinedFields: PredefinedField[] = [
   { name: 'ID do funcionário', source: 'id_funcionario', defaultSize: 10 },
   { name: 'Nome do funcionário', source: 'nome_funcionario', defaultSize: 50 },
   { name: 'CPF do funcionário', source: 'cpf_funcionario', defaultSize: 11 },
-  { name: 'Número da Folha', source: 'numero_folha', defaultSize: 6 },
+  { name: 'Número de Matrícula', source: 'numero_matricula', defaultSize: 6 },
   { name: 'Mês de referência', source: 'mes_referencia', defaultSize: 2 },
   { name: 'Ano de referência', source: 'ano_referencia', defaultSize: 4 },
 ];
@@ -584,41 +584,26 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
                           </select>
                         </div>
                         <div className="space-y-1">
-                          <select
-                            value={field.date_format || 'ddmmaaaa'}
-                            onChange={(e) => handleUpdateField(field.id, { date_format: e.target.value })}
-                            className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
-                          >
-                            {field.field_source?.includes('date') || field.field_source?.includes('data') ? (
-                              <>
-                                <option value="ddmmaaaa">ddmmaaaa</option>
-                                <option value="ddmmaaaa_slash">dd/mm/aaaa</option>
-                                <option value="ddmmaa_slash">dd/mm/aa</option>
-                                <option value="aaaammdd">aaaammdd</option>
-                                <option value="aaaa_mm_dd">aaaa-mm-dd</option>
-                                <option value="ddmmaa">ddmmaa</option>
-                                <option value="aaaamm">aaaamm</option>
-                                <option value="mmaaaa">mmaaaa</option>
-                                <option value="mm">mm</option>
-                                <option value="aaaa">aaaa</option>
-                              </>
-                            ) : field.field_source?.includes('code') || field.field_source?.includes('codigo') ? (
-                              <>
-                                <option value="aaaaa">aaaaa</option>
-                                <option value="aaaaa_hifenizado">aaaaa-hifenizado</option>
-                              </>
-                            ) : field.field_source?.includes('value') || field.field_source?.includes('valor') ? (
-                              <>
-                                <option value="hhmm">hhmm</option>
-                                <option value="decimal">decimal</option>
-                              </>
-                            ) : (
-                              <>
-                                <option value="texto">texto</option>
-                              </>
-                            )}
-                          </select>
-                          {field.date_format === 'decimal' && (
+                          {(field.field_source?.includes('date') || field.field_source?.includes('data') ||
+                            field.field_source?.includes('mes') || field.field_source?.includes('ano')) ? (
+                            <select
+                              value={field.date_format || 'yyyymmdd'}
+                              onChange={(e) => handleUpdateField(field.id, { date_format: e.target.value })}
+                              className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
+                            >
+                              <option value="aaaa">aaaa</option>
+                              <option value="ddmmaaaa">ddmmaaaa</option>
+                              <option value="dd/mm/aaaa">dd/mm/aaaa</option>
+                              <option value="dd/mm/aa">dd/mm/aa</option>
+                              <option value="aaaammdd">aaaammdd</option>
+                              <option value="aaaa-mm-dd">aaaa-mm-dd</option>
+                              <option value="ddmmaa">ddmmaa</option>
+                              <option value="aaaamm">aaaamm</option>
+                              <option value="mmaaaa">mmaaaa</option>
+                              <option value="mm">mm</option>
+                            </select>
+                          ) : (field.field_source?.includes('code') || field.field_source?.includes('codigo') ||
+                                field.field_source?.includes('value') || field.field_source?.includes('valor')) ? (
                             <div className="flex items-center gap-1">
                               <label className="text-xs text-gray-600 whitespace-nowrap">Casas decimais:</label>
                               <input
@@ -627,9 +612,11 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
                                 max="4"
                                 value={field.decimal_places || 0}
                                 onChange={(e) => handleUpdateField(field.id, { decimal_places: parseInt(e.target.value) || 0 })}
-                                className="w-12 px-1 py-0.5 text-xs border border-gray-300 rounded"
+                                className="w-16 px-2 py-1 text-xs border border-gray-300 rounded"
                               />
                             </div>
+                          ) : (
+                            <span className="text-xs text-gray-500 px-2 py-1">Texto</span>
                           )}
                         </div>
                         <div>

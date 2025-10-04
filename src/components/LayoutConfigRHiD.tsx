@@ -65,10 +65,13 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
   const [layoutName, setLayoutName] = useState('');
   const [headerText, setHeaderText] = useState('');
   const [footerText, setFooterText] = useState('');
-  const [fieldSeparator, setFieldSeparator] = useState('virgula');
-  const [decimalSeparator, setDecimalSeparator] = useState('ponto');
-  const [reportType, setReportType] = useState('um_evento_por_linha');
-  const [multiplyBy, setMultiplyBy] = useState('extra');
+  const [fieldSeparator, setFieldSeparator] = useState('none');
+  const [decimalSeparator, setDecimalSeparator] = useState('dot');
+  const [reportType, setReportType] = useState('one_event_per_line');
+  const [multiplyExtraFactor, setMultiplyExtraFactor] = useState(false);
+  const [multiplyNightFactor, setMultiplyNightFactor] = useState(false);
+  const [extraFactor, setExtraFactor] = useState(1.5);
+  const [nightFactor, setNightFactor] = useState(1.2);
 
   const [selectedField, setSelectedField] = useState('');
   const [newEventName, setNewEventName] = useState('');
@@ -77,6 +80,13 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
   useEffect(() => {
     if (layout) {
       setLayoutName(layout.name);
+      setFieldSeparator(layout.field_separator || 'none');
+      setDecimalSeparator(layout.decimal_separator || 'dot');
+      setReportType(layout.report_type || 'one_event_per_line');
+      setMultiplyExtraFactor(layout.multiply_extra_factor || false);
+      setMultiplyNightFactor(layout.multiply_night_factor || false);
+      setExtraFactor(layout.extra_factor || 1.5);
+      setNightFactor(layout.night_factor || 1.2);
       loadFields();
       loadEvents();
     }
@@ -228,6 +238,13 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
         .from('export_layouts')
         .update({
           name: layoutName,
+          field_separator: fieldSeparator,
+          decimal_separator: decimalSeparator,
+          report_type: reportType,
+          multiply_extra_factor: multiplyExtraFactor,
+          multiply_night_factor: multiplyNightFactor,
+          extra_factor: extraFactor,
+          night_factor: nightFactor,
           updated_at: new Date().toISOString()
         })
         .eq('id', layout.id);
@@ -322,10 +339,12 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
                   onChange={(e) => setFieldSeparator(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="virgula">Vírgula</option>
-                  <option value="ponto_virgula">Ponto e vírgula</option>
-                  <option value="tab">Tab</option>
-                  <option value="pipe">Pipe (|)</option>
+                  <option value="none">Sem espaço</option>
+                  <option value="space">Espaço</option>
+                  <option value="dash">Traço (-)</option>
+                  <option value="dot">Ponto (.)</option>
+                  <option value="underscore">Underline (_)</option>
+                  <option value="semicolon">Ponto e Vírgula (;)</option>
                 </select>
               </div>
               <div>
@@ -337,53 +356,76 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
                   onChange={(e) => setDecimalSeparator(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="ponto">Ponto</option>
-                  <option value="virgula">Vírgula</option>
+                  <option value="dot">Ponto (.)</option>
+                  <option value="comma">Vírgula (,)</option>
+                  <option value="none">Sem separador</option>
                 </select>
               </div>
             </div>
 
-            <div className="flex items-center gap-8">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Tipo de relatório
                 </label>
                 <select
                   value={reportType}
                   onChange={(e) => setReportType(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="um_evento_por_linha">Um evento por linha</option>
-                  <option value="multiplos_eventos">Múltiplos eventos</option>
+                  <option value="one_event_per_line">Um evento por linha</option>
+                  <option value="one_employee_per_line">Um funcionário por linha</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Multiplicação por fator:
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Multiplicação por fator
                 </label>
                 <div className="space-y-2">
-                  <label className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <input
-                      type="radio"
-                      name="multiply"
-                      value="extra"
-                      checked={multiplyBy === 'extra'}
-                      onChange={(e) => setMultiplyBy(e.target.value)}
-                      className="w-4 h-4"
+                      type="checkbox"
+                      id="multiplyExtra"
+                      checked={multiplyExtraFactor}
+                      onChange={(e) => setMultiplyExtraFactor(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                     />
-                    <span className="text-sm text-gray-700">Multiplica pelo fator de extra</span>
-                  </label>
-                  <label className="flex items-center gap-2">
+                    <label htmlFor="multiplyExtra" className="text-sm text-gray-700 flex-1">
+                      Fator de extra
+                    </label>
+                    {multiplyExtraFactor && (
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={extraFactor}
+                        onChange={(e) => setExtraFactor(parseFloat(e.target.value))}
+                        className="w-20 px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                      />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
                     <input
-                      type="radio"
-                      name="multiply"
-                      value="noturno"
-                      checked={multiplyBy === 'noturno'}
-                      onChange={(e) => setMultiplyBy(e.target.value)}
-                      className="w-4 h-4"
+                      type="checkbox"
+                      id="multiplyNight"
+                      checked={multiplyNightFactor}
+                      onChange={(e) => setMultiplyNightFactor(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                     />
-                    <span className="text-sm text-gray-700">Multiplica pelo fator noturno</span>
-                  </label>
+                    <label htmlFor="multiplyNight" className="text-sm text-gray-700 flex-1">
+                      Fator noturno
+                    </label>
+                    {multiplyNightFactor && (
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={nightFactor}
+                        onChange={(e) => setNightFactor(parseFloat(e.target.value))}
+                        className="w-20 px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

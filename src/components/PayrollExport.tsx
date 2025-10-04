@@ -410,6 +410,3 @@ export default function PayrollExport() {
     </div>
   );
 }
-
-
-export default PayrollExport

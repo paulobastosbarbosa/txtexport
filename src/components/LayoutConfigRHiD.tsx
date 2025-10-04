@@ -158,6 +158,10 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
       ? Math.max(...fields.map(f => f.end_position || 0))
       : 0;
 
+    // Color palette for fields
+    const fieldColors = ['#FCD34D', '#60A5FA', '#F472B6', '#FB923C', '#34D399', '#A78BFA', '#000000', '#6B7280'];
+    const fieldColor = fieldColors[fields.length % fieldColors.length];
+
     try {
       const { data, error } = await supabase
         .from('layout_fields')
@@ -175,7 +179,8 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
           fill_type: 'spaces',
           date_format: 'ddmmaaaa',
           decimal_places: 0,
-          alignment: 'left'
+          alignment: 'left',
+          field_color: fieldColor
         }])
         .select()
         .single();
@@ -551,8 +556,9 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
                 </ul>
               </div>
               <div className="bg-gray-50 rounded p-4">
-                <div className="grid grid-cols-9 gap-2 mb-2 font-medium text-xs text-gray-700">
+                <div className="grid grid-cols-10 gap-2 mb-2 font-medium text-xs text-gray-700">
                   <div>Campo</div>
+                  <div>Cor</div>
                   <div>Tamanho</div>
                   <div>Pos. Inicial</div>
                   <div>Preenchimento</div>
@@ -568,8 +574,17 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
                 ) : (
                   <div className="space-y-2">
                     {fields.map((field, index) => (
-                      <div key={field.id} className="grid grid-cols-9 gap-2 items-center bg-white rounded p-2 border border-gray-200">
+                      <div key={field.id} className="grid grid-cols-10 gap-2 items-center bg-white rounded p-2 border border-gray-200">
                         <div className="text-xs text-gray-900 font-medium">{field.field_name}</div>
+                        <div>
+                          <input
+                            type="color"
+                            value={field.field_color || '#e5e7eb'}
+                            onChange={(e) => handleUpdateField(field.id, { field_color: e.target.value })}
+                            className="w-full h-8 rounded cursor-pointer"
+                            title="Selecione uma cor"
+                          />
+                        </div>
                         <div>
                           <input
                             type="number"
@@ -719,32 +734,38 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
                     <div className="font-mono text-xs">
                       <div className="flex">
                         {fields.map((field, idx) => {
-                          const colors = ['bg-yellow-500', 'bg-blue-500', 'bg-pink-500', 'bg-orange-500', 'bg-green-500', 'bg-purple-500', 'bg-red-500', 'bg-cyan-500'];
-                          const color = colors[idx % colors.length];
-
                           let exampleValue = '';
-                          if (field.field_source?.includes('date') || field.field_source?.includes('data')) {
-                            if (field.date_format === 'aaaa') exampleValue = '2025'.padEnd(field.field_size);
-                            else if (field.date_format === 'mm') exampleValue = '10'.padEnd(field.field_size);
-                            else exampleValue = '20251004'.padEnd(field.field_size);
-                          } else if (field.field_source?.includes('numero') || field.field_source?.includes('code')) {
-                            exampleValue = '0000'.padEnd(field.field_size);
+                          if (field.field_source?.includes('date') || field.field_source?.includes('data') ||
+                              field.field_source?.includes('dia') || field.field_source?.includes('mes') ||
+                              field.field_source?.includes('ano')) {
+                            if (field.date_format === 'aaaa') exampleValue = '2025';
+                            else if (field.date_format === 'mm') exampleValue = '10';
+                            else if (field.date_format === 'dd') exampleValue = '04';
+                            else exampleValue = '20251004';
+                          } else if (field.field_source?.includes('numero') || field.field_source?.includes('code') || field.field_source?.includes('codigo')) {
+                            exampleValue = '1116';
                           } else if (field.field_source?.includes('valor')) {
-                            exampleValue = '000016'.padEnd(field.field_size);
+                            exampleValue = '000002136';
                           } else {
-                            exampleValue = 'TESTE'.padEnd(field.field_size);
+                            exampleValue = 'TESTE';
+                          }
+
+                          // Apply alignment and fill
+                          if (field.alignment === 'right') {
+                            exampleValue = exampleValue.padStart(field.field_size, field.fill_type === 'zeros' ? '0' : ' ');
+                          } else {
+                            exampleValue = exampleValue.padEnd(field.field_size, field.fill_type === 'zeros' ? '0' : ' ');
                           }
 
                           exampleValue = exampleValue.substring(0, field.field_size);
 
-                          if (field.fill_type === 'zeros') {
-                            exampleValue = exampleValue.replace(/ /g, '0');
-                          } else if (field.fill_type === 'dash') {
-                            exampleValue = exampleValue.replace(/ /g, '-');
-                          }
-
                           return (
-                            <span key={field.id} className={`${color} text-white px-0.5`} title={`${field.field_name} (${field.start_position}-${field.end_position})`}>
+                            <span
+                              key={field.id}
+                              style={{ backgroundColor: field.field_color || '#e5e7eb' }}
+                              className="text-gray-900 font-bold px-0.5"
+                              title={`${field.field_name} (${field.start_position}-${field.end_position})`}
+                            >
                               {exampleValue}
                             </span>
                           );

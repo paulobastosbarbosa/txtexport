@@ -937,6 +937,3 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
     </div>
   );
 }
-
-
-export default LayoutConfigRHiD

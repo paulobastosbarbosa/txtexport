@@ -672,6 +672,80 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
                   </div>
                 )}
               </div>
+
+              {fields.length > 0 && (
+                <div className="border-t pt-6 mt-6">
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">Preview do arquivo TXT (exemplo com dados de teste):</h4>
+                  <div className="bg-gray-900 rounded-lg p-4 overflow-x-auto">
+                    <div className="font-mono text-xs">
+                      <div className="flex">
+                        {fields.map((field, idx) => {
+                          const colors = ['bg-yellow-500', 'bg-blue-500', 'bg-pink-500', 'bg-orange-500', 'bg-green-500', 'bg-purple-500', 'bg-red-500', 'bg-cyan-500'];
+                          const color = colors[idx % colors.length];
+
+                          let exampleValue = '';
+                          if (field.field_source?.includes('date') || field.field_source?.includes('data')) {
+                            if (field.date_format === 'aaaa') exampleValue = '2025'.padEnd(field.field_size);
+                            else if (field.date_format === 'mm') exampleValue = '10'.padEnd(field.field_size);
+                            else exampleValue = '20251004'.padEnd(field.field_size);
+                          } else if (field.field_source?.includes('numero') || field.field_source?.includes('code')) {
+                            exampleValue = '0000'.padEnd(field.field_size);
+                          } else if (field.field_source?.includes('valor')) {
+                            exampleValue = '000016'.padEnd(field.field_size);
+                          } else {
+                            exampleValue = 'TESTE'.padEnd(field.field_size);
+                          }
+
+                          exampleValue = exampleValue.substring(0, field.field_size);
+
+                          if (field.fill_type === 'zeros') {
+                            exampleValue = exampleValue.replace(/ /g, '0');
+                          } else if (field.fill_type === 'dash') {
+                            exampleValue = exampleValue.replace(/ /g, '-');
+                          }
+
+                          return (
+                            <span key={field.id} className={`${color} text-white px-0.5`} title={`${field.field_name} (${field.start_position}-${field.end_position})`}>
+                              {exampleValue}
+                            </span>
+                          );
+                        })}
+                      </div>
+                      <div className="flex mt-2 text-gray-400 text-xs">
+                        {fields.map((field, idx) => (
+                          <span key={field.id} style={{ width: `${field.field_size}ch` }} className="truncate" title={field.field_name}>
+                            {field.field_name.substring(0, field.field_size)}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-3 space-y-1">
+                    {fields.map((field, idx) => {
+                      const colors = ['bg-yellow-500', 'bg-blue-500', 'bg-pink-500', 'bg-orange-500', 'bg-green-500', 'bg-purple-500', 'bg-red-500', 'bg-cyan-500'];
+                      const color = colors[idx % colors.length];
+                      return (
+                        <div key={field.id} className="flex items-center gap-2 text-xs text-gray-600">
+                          <span className={`${color} w-3 h-3 rounded`}></span>
+                          <span className="font-medium">{field.field_name}</span>
+                          <span>-</span>
+                          <span>Tamanho: {field.field_size}</span>
+                          <span>-</span>
+                          <span>Posição: {field.start_position} a {field.end_position}</span>
+                          <span>-</span>
+                          <span>Alinhamento: {field.alignment === 'left' ? 'Esquerda' : 'Direita'}</span>
+                          {field.date_format && (
+                            <>
+                              <span>-</span>
+                              <span>Formato: {field.date_format}</span>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

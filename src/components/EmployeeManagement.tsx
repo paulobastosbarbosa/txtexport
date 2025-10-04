@@ -142,9 +142,9 @@ export default function EmployeeManagement() {
   };
 
   const handleExportCSV = () => {
-    const csvHeaders = 'Código,Nome,Documento,Nº Folha Empresa,Nº Folha,Status\n';
+    const csvHeaders = 'Código;Nome;Documento;Nº Folha Empresa;Nº Folha;Status\n';
     const csvData = employees.map(emp =>
-      `${emp.employee_code},"${emp.name}","${emp.document || ''}",${emp.company_payroll_number},${emp.payroll_number},${emp.active ? 'Ativo' : 'Inativo'}`
+      `${emp.employee_code};${emp.name};${emp.document || ''};${emp.company_payroll_number};${emp.payroll_number};${emp.active ? 'Ativo' : 'Inativo'}`
     ).join('\n');
 
     const csv = csvHeaders + csvData;
@@ -158,9 +158,9 @@ export default function EmployeeManagement() {
   };
 
   const handleDownloadTemplate = () => {
-    const template = 'Código,Nome,Documento,Nº Folha Empresa,Nº Folha,Status\n' +
-                    '001,João da Silva,12345678900,000001,000001,Ativo\n' +
-                    '002,Maria Santos,98765432100,000002,000002,Ativo';
+    const template = 'Código;Nome;Documento;Nº Folha Empresa;Nº Folha;Status\n' +
+                    '001;João da Silva;12345678900;000001;000001;Ativo\n' +
+                    '002;Maria Santos;98765432100;000002;000002;Ativo';
 
     const blob = new Blob(['\uFEFF' + template], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -191,9 +191,17 @@ export default function EmployeeManagement() {
       return;
     }
 
-    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+    const delimiter = lines[0].includes(';') ? ';' : ',';
+
+    const headers = lines[0].split(delimiter).map(h => h.trim().replace(/"/g, ''));
     const data = lines.slice(1).map(line => {
-      const values = line.match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g)?.map(v => v.trim().replace(/^"|"$/g, '')) || [];
+      let values: string[];
+
+      if (delimiter === ';') {
+        values = line.split(';').map(v => v.trim());
+      } else {
+        values = line.match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g)?.map(v => v.trim().replace(/^"|"$/g, '')) || [];
+      }
 
       return {
         employee_code: values[0] || '',
@@ -472,7 +480,7 @@ export default function EmployeeManagement() {
                   className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none p-2"
                 />
                 <p className="text-xs text-gray-500 mt-2">
-                  Formato esperado: Código,Nome,Documento,Nº Folha Empresa,Nº Folha,Status
+                  Formato esperado: Código;Nome;Documento;Nº Folha Empresa;Nº Folha;Status
                 </p>
               </div>
 

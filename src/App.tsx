@@ -5,9 +5,10 @@ import LayoutConfigRHiD from './components/LayoutConfigRHiD';
 import EventManagement from './components/EventManagement';
 import EventLaunches from './components/EventLaunches';
 import EmployeeManagement from './components/EmployeeManagement';
-import { Settings, FileText, Calendar, Users, CheckSquare } from 'lucide-react';
+import PayrollExport from './components/PayrollExport';
+import { Settings, FileText, Calendar, Users, CheckSquare, Download } from 'lucide-react';
 
-type TabType = 'layouts' | 'events' | 'launches' | 'employees';
+type TabType = 'layouts' | 'events' | 'launches' | 'employees' | 'export';
 
 function App() {
   const [selectedLayout, setSelectedLayout] = useState<ExportLayout | null>(null);
@@ -74,6 +75,17 @@ function App() {
               <Users className="w-4 h-4" />
               Funcionários
             </button>
+            <button
+              onClick={() => setActiveTab('export')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors text-sm font-medium ${
+                activeTab === 'export'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <Download className="w-4 h-4" />
+              Exportar para Folha
+            </button>
           </nav>
         </div>
 
@@ -101,6 +113,10 @@ function App() {
 
         {activeTab === 'employees' && (
           <EmployeeManagement />
+        )}
+
+        {activeTab === 'export' && (
+          <PayrollExport />
         )}
 
         {activeTab === 'layouts' && !selectedLayout && (

@@ -183,7 +183,6 @@ export default function PayrollExport() {
     // Apply fill type and size
     const targetSize = field.field_size || result.length;
     const fillType = field.fill_type || 'spaces';
-    const alignment = field.alignment || 'left';
     const fillChar = fillType === 'zeros' ? '0' : fillType === 'dash' ? '-' : ' ';
 
     // First truncate if too long
@@ -191,15 +190,9 @@ export default function PayrollExport() {
       result = result.substring(0, targetSize);
     }
 
-    // Then apply padding based on alignment
+    // Always pad left (right aligned) - fill characters go on the left
     if (result.length < targetSize) {
-      if (alignment === 'right') {
-        // Right aligned: fill characters go on the left
-        result = result.padStart(targetSize, fillChar);
-      } else {
-        // Left aligned: fill characters go on the right
-        result = result.padEnd(targetSize, fillChar);
-      }
+      result = result.padStart(targetSize, fillChar);
     }
 
     return result;

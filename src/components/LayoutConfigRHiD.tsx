@@ -556,14 +556,13 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
                 </ul>
               </div>
               <div className="bg-gray-50 rounded p-4">
-                <div className="grid grid-cols-10 gap-2 mb-2 font-medium text-xs text-gray-700">
+                <div className="grid grid-cols-9 gap-2 mb-2 font-medium text-xs text-gray-700">
                   <div>Campo</div>
                   <div>Cor</div>
                   <div>Tamanho</div>
                   <div>Pos. Inicial</div>
                   <div>Preenchimento</div>
                   <div>Formato</div>
-                  <div>Alinhamento</div>
                   <div className="text-center">Agrupador</div>
                   <div className="col-span-2">Ações</div>
                 </div>
@@ -574,7 +573,7 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
                 ) : (
                   <div className="space-y-2">
                     {fields.map((field, index) => (
-                      <div key={field.id} className="grid grid-cols-10 gap-2 items-center bg-white rounded p-2 border border-gray-200">
+                      <div key={field.id} className="grid grid-cols-9 gap-2 items-center bg-white rounded p-2 border border-gray-200">
                         <div className="text-xs text-gray-900 font-medium">{field.field_name}</div>
                         <div>
                           <input
@@ -677,16 +676,6 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
                             <span className="text-xs text-gray-500 px-2 py-1">Texto</span>
                           )}
                         </div>
-                        <div>
-                          <select
-                            value={field.alignment || 'left'}
-                            onChange={(e) => handleUpdateField(field.id, { alignment: e.target.value })}
-                            className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
-                          >
-                            <option value="left">Esquerda</option>
-                            <option value="right">Direita</option>
-                          </select>
-                        </div>
                         <div className="flex justify-center">
                           <input
                             type="checkbox"
@@ -750,7 +739,7 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
                             exampleValue = 'TESTE';
                           }
 
-                          // Apply alignment and fill
+                          // Apply fill type
                           const fillChar = field.fill_type === 'zeros' ? '0' : field.fill_type === 'dash' ? '-' : ' ';
 
                           // First truncate if too long
@@ -758,15 +747,9 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
                             exampleValue = exampleValue.substring(0, field.field_size);
                           }
 
-                          // Then apply padding based on alignment
+                          // Always pad left (right aligned) - fill characters go on the left
                           if (exampleValue.length < field.field_size) {
-                            if (field.alignment === 'right') {
-                              // Right aligned: fill characters go on the left
-                              exampleValue = exampleValue.padStart(field.field_size, fillChar);
-                            } else {
-                              // Left aligned: fill characters go on the right
-                              exampleValue = exampleValue.padEnd(field.field_size, fillChar);
-                            }
+                            exampleValue = exampleValue.padStart(field.field_size, fillChar);
                           }
 
                           return (
@@ -954,3 +937,6 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
     </div>
   );
 }
+
+
+export default LayoutConfigRHiD

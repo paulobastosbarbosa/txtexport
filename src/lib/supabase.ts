@@ -44,6 +44,9 @@ export type LayoutField = {
   start_position: number | null;
   end_position: number | null;
   field_source: string | null;
+  fill_type: string;
+  date_format: string;
+  alignment: string;
   created_at: string;
 };
 

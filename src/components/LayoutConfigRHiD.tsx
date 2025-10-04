@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase, ExportLayout, LayoutField, PayrollEvent } from '../lib/supabase';
-import { Plus, Trash2, Save } from 'lucide-react';
+import { Plus, Trash2, Save, ChevronUp, ChevronDown } from 'lucide-react';
 
 type LayoutConfigRHiDProps = {
   layout: ExportLayout | null;
@@ -155,7 +155,10 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
           end_position: lastPosition + fieldDef.defaultSize,
           order_position: fields.length + 1,
           format_pattern: null,
-          default_value: null
+          default_value: null,
+          fill_type: 'spaces',
+          date_format: 'ddmmaaaa',
+          alignment: 'left'
         }])
         .select()
         .single();
@@ -183,6 +186,30 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
     } catch (error) {
       console.error('Error deleting field:', error);
       alert('Erro ao excluir campo');
+    }
+  };
+
+  const handleMoveField = async (index: number, direction: 'up' | 'down') => {
+    if (direction === 'up' && index === 0) return;
+    if (direction === 'down' && index === fields.length - 1) return;
+
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    const newFields = [...fields];
+    const [movedField] = newFields.splice(index, 1);
+    newFields.splice(newIndex, 0, movedField);
+
+    try {
+      for (let i = 0; i < newFields.length; i++) {
+        await supabase
+          .from('layout_fields')
+          .update({ order_position: i + 1 })
+          .eq('id', newFields[i].id);
+      }
+
+      setFields(newFields);
+    } catch (error) {
+      console.error('Error moving field:', error);
+      alert('Erro ao mover campo');
     }
   };
 
@@ -459,11 +486,14 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
 
             <div className="border-t pt-6">
               <div className="bg-gray-50 rounded p-4">
-                <div className="grid grid-cols-4 gap-4 mb-2 font-medium text-sm text-gray-700">
-                  <div>Nome do campo</div>
-                  <div>Tamanho do campo</div>
-                  <div>Posição inicial</div>
-                  <div>Posição final</div>
+                <div className="grid grid-cols-8 gap-2 mb-2 font-medium text-xs text-gray-700">
+                  <div>Campo</div>
+                  <div>Tamanho</div>
+                  <div>Pos. Inicial</div>
+                  <div>Preenchimento</div>
+                  <div>Formato</div>
+                  <div>Alinhamento</div>
+                  <div className="col-span-2">Ações</div>
                 </div>
                 {fields.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
@@ -471,9 +501,9 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {fields.map((field) => (
-                      <div key={field.id} className="grid grid-cols-4 gap-4 items-center bg-white rounded p-3 border border-gray-200">
-                        <div className="text-sm text-gray-900">{field.field_name}</div>
+                    {fields.map((field, index) => (
+                      <div key={field.id} className="grid grid-cols-8 gap-2 items-center bg-white rounded p-2 border border-gray-200">
+                        <div className="text-xs text-gray-900 font-medium">{field.field_name}</div>
                         <div>
                           <input
                             type="number"
@@ -486,7 +516,7 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
                                 end_position: endPos
                               });
                             }}
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                            className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
                           />
                         </div>
                         <div>
@@ -501,19 +531,69 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
                                 end_position: endPos
                               });
                             }}
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                            className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
                           />
                         </div>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            value={field.end_position || ''}
-                            readOnly
-                            className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded bg-gray-50"
-                          />
+                        <div>
+                          <select
+                            value={field.fill_type || 'spaces'}
+                            onChange={(e) => handleUpdateField(field.id, { fill_type: e.target.value })}
+                            className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
+                          >
+                            <option value="spaces">Espaços</option>
+                            <option value="zeros">Zeros</option>
+                            <option value="dash">Traço</option>
+                          </select>
+                        </div>
+                        <div>
+                          <select
+                            value={field.date_format || 'ddmmaaaa'}
+                            onChange={(e) => handleUpdateField(field.id, { date_format: e.target.value })}
+                            className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
+                          >
+                            <option value="ddmmaaaa">ddmmaaaa</option>
+                            <option value="ddmmaaaa_slash">dd/mm/aaaa</option>
+                            <option value="ddmmaa_slash">dd/mm/aa</option>
+                            <option value="aaaammdd">aaaammdd</option>
+                            <option value="aaaa_mm_dd">aaaa-mm-dd</option>
+                            <option value="ddmmaa">ddmmaa</option>
+                            <option value="aaaamm">aaaamm</option>
+                            <option value="mmaaaa">mmaaaa</option>
+                            <option value="mm">mm</option>
+                            <option value="aaaa">aaaa</option>
+                          </select>
+                        </div>
+                        <div>
+                          <select
+                            value={field.alignment || 'left'}
+                            onChange={(e) => handleUpdateField(field.id, { alignment: e.target.value })}
+                            className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
+                          >
+                            <option value="left">Esquerda</option>
+                            <option value="right">Direita</option>
+                          </select>
+                        </div>
+                        <div className="col-span-2 flex items-center gap-1">
+                          <button
+                            onClick={() => handleMoveField(index, 'up')}
+                            disabled={index === 0}
+                            className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                            title="Mover para cima"
+                          >
+                            <ChevronUp className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleMoveField(index, 'down')}
+                            disabled={index === fields.length - 1}
+                            className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                            title="Mover para baixo"
+                          >
+                            <ChevronDown className="w-4 h-4" />
+                          </button>
                           <button
                             onClick={() => handleDeleteField(field.id)}
                             className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                            title="Excluir campo"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>

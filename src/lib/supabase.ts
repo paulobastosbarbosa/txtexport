@@ -48,6 +48,7 @@ export type LayoutField = {
   date_format: string;
   decimal_places: number;
   alignment: string;
+  is_aggregation_field: boolean;
   created_at: string;
 };
 

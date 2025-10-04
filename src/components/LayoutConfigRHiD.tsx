@@ -523,14 +523,26 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
             </div>
 
             <div className="border-t pt-6">
+              <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h4 className="text-sm font-medium text-blue-900 mb-2">Campos Agrupadores (Dia Final)</h4>
+                <p className="text-xs text-blue-800 leading-relaxed">
+                  Marque os campos de data como "Agrupador" para determinar como os valores dos eventos serão somados:
+                </p>
+                <ul className="mt-2 text-xs text-blue-800 space-y-1 ml-4">
+                  <li><strong>aaaa + mm + dd</strong> = soma por dia específico</li>
+                  <li><strong>aaaa + mm</strong> = soma total do mês</li>
+                  <li><strong>aaaa</strong> = soma total do ano</li>
+                </ul>
+              </div>
               <div className="bg-gray-50 rounded p-4">
-                <div className="grid grid-cols-8 gap-2 mb-2 font-medium text-xs text-gray-700">
+                <div className="grid grid-cols-9 gap-2 mb-2 font-medium text-xs text-gray-700">
                   <div>Campo</div>
                   <div>Tamanho</div>
                   <div>Pos. Inicial</div>
                   <div>Preenchimento</div>
                   <div>Formato</div>
                   <div>Alinhamento</div>
+                  <div className="text-center">Agrupador</div>
                   <div className="col-span-2">Ações</div>
                 </div>
                 {fields.length === 0 ? (
@@ -540,7 +552,7 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
                 ) : (
                   <div className="space-y-2">
                     {fields.map((field, index) => (
-                      <div key={field.id} className="grid grid-cols-8 gap-2 items-center bg-white rounded p-2 border border-gray-200">
+                      <div key={field.id} className="grid grid-cols-9 gap-2 items-center bg-white rounded p-2 border border-gray-200">
                         <div className="text-xs text-gray-900 font-medium">{field.field_name}</div>
                         <div>
                           <input
@@ -628,6 +640,15 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
                             <option value="left">Esquerda</option>
                             <option value="right">Direita</option>
                           </select>
+                        </div>
+                        <div className="flex justify-center">
+                          <input
+                            type="checkbox"
+                            checked={field.is_aggregation_field || false}
+                            onChange={(e) => handleUpdateField(field.id, { is_aggregation_field: e.target.checked })}
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
+                            title="Campo usado para agrupar valores (ex: ano, mês, dia)"
+                          />
                         </div>
                         <div className="col-span-2 flex items-center gap-1">
                           <button

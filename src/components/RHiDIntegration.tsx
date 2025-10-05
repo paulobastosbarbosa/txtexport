@@ -125,7 +125,7 @@ export default function RHiDIntegration() {
     }
 
     try {
-      const response = await fetch(`${settings.rhid_api_url}/api/auth/login`, {
+      const response = await fetch(`${settings.rhid_api_url}/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -145,15 +145,15 @@ export default function RHiDIntegration() {
       const { error } = await supabase
         .from('rhid_integration_settings')
         .update({
-          rhid_token: data.token,
-          token_expires_at: data.expires_at,
+          rhid_token: data.accessToken,
+          token_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         })
         .eq('id', settings.id);
 
       if (error) throw error;
 
       await loadSettings();
-      return data.token;
+      return data.accessToken;
     } catch (error) {
       console.error('Authentication error:', error);
       setMessage({ type: 'error', text: 'Erro ao autenticar com RHiD' });
@@ -180,7 +180,7 @@ export default function RHiDIntegration() {
         }
       }
 
-      const response = await fetch(`${settings.rhid_api_url}/api/employees`, {
+      const response = await fetch(`${settings.rhid_api_url}/person?start=0&length=1000`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -192,7 +192,8 @@ export default function RHiDIntegration() {
         throw new Error('Falha ao buscar funcionários do RHiD');
       }
 
-      const rhidEmployees = await response.json();
+      const responseData = await response.json();
+      const rhidEmployees = responseData.data || responseData || [];
 
       let syncedCount = 0;
       let errorCount = 0;
@@ -202,16 +203,19 @@ export default function RHiDIntegration() {
           const { data: existingEmployee } = await supabase
             .from('employees')
             .select('id')
-            .eq('rhid_employee_id', rhidEmployee.id)
+            .eq('rhid_employee_id', rhidEmployee.id.toString())
             .maybeSingle();
 
           const employeeData = {
-            employee_code: rhidEmployee.codigo || rhidEmployee.code,
-            name: rhidEmployee.nome || rhidEmployee.name,
-            payroll_number: rhidEmployee.matricula || rhidEmployee.payroll_number,
+            employee_code: rhidEmployee.code?.toString() || '',
+            name: rhidEmployee.name || '',
+            document: rhidEmployee.cpf?.toString() || null,
+            payroll_number: rhidEmployee.registration || '000000',
+            company_payroll_number: '000000',
             rhid_employee_id: rhidEmployee.id.toString(),
             last_synced_at: new Date().toISOString(),
             sync_status: 'synced',
+            active: rhidEmployee.status === 1,
           };
 
           if (existingEmployee) {

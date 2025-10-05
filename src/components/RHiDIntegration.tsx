@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { RefreshCw, Settings, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { RefreshCw, Settings, CheckCircle, XCircle, Clock, Code, Save } from 'lucide-react';
 
 type RHiDSettings = {
   id: string;
@@ -33,6 +33,10 @@ export default function RHiDIntegration() {
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
   const [showSettings, setShowSettings] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [showEdgeFunctions, setShowEdgeFunctions] = useState(false);
+  const [authFunctionCode, setAuthFunctionCode] = useState('');
+  const [syncFunctionCode, setSyncFunctionCode] = useState('');
+  const [editingFunction, setEditingFunction] = useState<'auth' | 'sync' | null>(null);
 
   useEffect(() => {
     loadSettings();
@@ -255,13 +259,22 @@ export default function RHiDIntegration() {
             Sincronize funcionários automaticamente do sistema RHiD
           </p>
         </div>
-        <button
-          onClick={() => setShowSettings(!showSettings)}
-          className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-        >
-          <Settings className="w-4 h-4" />
-          Configurações
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowEdgeFunctions(!showEdgeFunctions)}
+            className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            <Code className="w-4 h-4" />
+            Edge Functions
+          </button>
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            <Settings className="w-4 h-4" />
+            Configurações
+          </button>
+        </div>
       </div>
 
       <div className="p-6">
@@ -275,7 +288,112 @@ export default function RHiDIntegration() {
           </div>
         )}
 
-        {showSettings ? (
+        {showEdgeFunctions ? (
+          <div className="space-y-6">
+            <div className="bg-blue-50 border-l-4 border-blue-500 p-4">
+              <p className="text-sm text-blue-800">
+                <strong>Edge Functions</strong> - Configure diretamente como a API do RHiD é chamada.
+                Você pode modificar endpoints, headers, e o processamento de dados aqui.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="bg-gray-50 px-4 py-3 flex items-center justify-between border-b border-gray-200">
+                  <div>
+                    <h3 className="font-semibold text-gray-900">rhid-auth</h3>
+                    <p className="text-sm text-gray-600">Gerencia a autenticação com o RHiD</p>
+                  </div>
+                  <a
+                    href="/supabase/functions/rhid-auth/index.ts"
+                    target="_blank"
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+                  >
+                    <Code className="w-4 h-4" />
+                    Ver Código
+                  </a>
+                </div>
+                <div className="p-4 bg-gray-900 text-gray-100 overflow-x-auto">
+                  <pre className="text-sm">
+{`// Localização: supabase/functions/rhid-auth/index.ts
+
+// Você pode modificar:
+// - URL do endpoint RHiD
+// - Headers da requisição
+// - Formato do body
+// - Processamento da resposta
+
+const rhidApiUrl = apiUrl || "https://www.rhid.com.br/v2";
+
+const rhidResponse = await fetch(\`\${rhidApiUrl}/login\`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    email: email,
+    password: password,
+  }),
+});`}
+                  </pre>
+                </div>
+              </div>
+
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="bg-gray-50 px-4 py-3 flex items-center justify-between border-b border-gray-200">
+                  <div>
+                    <h3 className="font-semibold text-gray-900">rhid-sync-employees</h3>
+                    <p className="text-sm text-gray-600">Sincroniza funcionários do RHiD para o banco de dados</p>
+                  </div>
+                  <a
+                    href="/supabase/functions/rhid-sync-employees/index.ts"
+                    target="_blank"
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+                  >
+                    <Code className="w-4 h-4" />
+                    Ver Código
+                  </a>
+                </div>
+                <div className="p-4 bg-gray-900 text-gray-100 overflow-x-auto">
+                  <pre className="text-sm">
+{`// Localização: supabase/functions/rhid-sync-employees/index.ts
+
+// Você pode modificar:
+// - Endpoint de busca de funcionários
+// - Mapeamento de campos
+// - Lógica de sincronização
+
+const rhidResponse = await fetch(
+  \`\${rhidApiUrl}/person?start=0&length=1000\`,
+  {
+    method: "GET",
+    headers: {
+      "Authorization": \`Bearer \${accessToken}\`,
+      "Content-Type": "application/json",
+    },
+  }
+);
+
+const employeeData = {
+  employee_code: rhidEmployee.code?.toString() || "",
+  name: rhidEmployee.name || "",
+  document: rhidEmployee.cpf?.toString() || null,
+  // ... mais campos
+};`}
+                  </pre>
+                </div>
+              </div>
+
+              <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4">
+                <p className="text-sm text-yellow-800">
+                  <strong>Como editar:</strong> Os arquivos estão localizados em
+                  <code className="mx-1 px-2 py-0.5 bg-yellow-100 rounded">supabase/functions/</code>
+                  Após editar, as mudanças são aplicadas automaticamente.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : showSettings ? (
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">

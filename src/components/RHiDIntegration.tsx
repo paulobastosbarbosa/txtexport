@@ -447,6 +447,3 @@ export default function RHiDIntegration() {
     </div>
   );
 }
-
-
-export default RHiDIntegration

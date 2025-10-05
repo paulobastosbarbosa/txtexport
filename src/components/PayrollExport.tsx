@@ -153,16 +153,37 @@ export default function PayrollExport() {
 
     // Determine value based on field source
     if (source === 'numero_folha_empresa' || source === 'company_payroll_number') {
-      result = launch.employee?.company_payroll_number || '';
+      const rawValue = launch.employee?.company_payroll_number || '';
+      const decimalPlaces = field.decimal_places ?? 0;
+      if (decimalPlaces > 0 && rawValue) {
+        const numValue = parseFloat(rawValue);
+        result = numValue.toFixed(decimalPlaces).replace('.', '');
+      } else {
+        result = rawValue;
+      }
     } else if (source === 'numero_matricula' || source === 'payroll_number') {
-      result = launch.employee?.payroll_number || '';
+      const rawValue = launch.employee?.payroll_number || '';
+      const decimalPlaces = field.decimal_places ?? 0;
+      if (decimalPlaces > 0 && rawValue) {
+        const numValue = parseFloat(rawValue);
+        result = numValue.toFixed(decimalPlaces).replace('.', '');
+      } else {
+        result = rawValue;
+      }
     } else if (source === 'nome_funcionario') {
       result = launch.employee?.name || '';
     } else if (source === 'codigo_funcionario' || source === 'employee_code') {
       result = launch.employee?.employee_code || '';
     } else if (source === 'codigo_evento') {
       // Use default_value if set (fixed event code), otherwise use the event code from launch
-      result = field.default_value || launch.event?.code || '';
+      const rawValue = field.default_value || launch.event?.code || '';
+      const decimalPlaces = field.decimal_places ?? 0;
+      if (decimalPlaces > 0 && rawValue) {
+        const numValue = parseFloat(rawValue);
+        result = numValue.toFixed(decimalPlaces).replace('.', '');
+      } else {
+        result = rawValue;
+      }
     } else if (source.includes('data') || source.includes('date') || source.includes('dia') || source.includes('mes') || source.includes('ano')) {
       // Apply date formatting
       result = formatDateValue(launchDate, field.date_format || 'aaaammdd');

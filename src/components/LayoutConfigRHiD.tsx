@@ -660,7 +660,10 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
                               ))}
                             </select>
                           ) : (field.field_source?.includes('code') || field.field_source?.includes('codigo') ||
-                                field.field_source?.includes('value') || field.field_source?.includes('valor')) ? (
+                                field.field_source?.includes('value') || field.field_source?.includes('valor') ||
+                                field.field_source?.includes('empresa') || field.field_source?.includes('company') ||
+                                field.field_source?.includes('matricula') || field.field_source?.includes('employee') ||
+                                field.field_source === 'codigo_evento') ? (
                             <div className="flex items-center gap-1">
                               <label className="text-xs text-gray-600 whitespace-nowrap">Casas decimais:</label>
                               <input

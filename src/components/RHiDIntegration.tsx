@@ -11,6 +11,13 @@ type RHiDSettings = {
   token_expires_at: string | null;
   last_sync_at: string | null;
   sync_enabled: boolean;
+  auth_endpoint: string;
+  employees_endpoint: string;
+  auth_method: string;
+  employees_method: string;
+  custom_headers: Record<string, string>;
+  auth_body_template: Record<string, string>;
+  employees_query_params: Record<string, string>;
 };
 
 type SyncLog = {
@@ -33,10 +40,13 @@ export default function RHiDIntegration() {
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
   const [showSettings, setShowSettings] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [showEdgeFunctions, setShowEdgeFunctions] = useState(false);
-  const [authFunctionCode, setAuthFunctionCode] = useState('');
-  const [syncFunctionCode, setSyncFunctionCode] = useState('');
-  const [editingFunction, setEditingFunction] = useState<'auth' | 'sync' | null>(null);
+  const [showApiConfig, setShowApiConfig] = useState(false);
+  const [authEndpoint, setAuthEndpoint] = useState('/login');
+  const [employeesEndpoint, setEmployeesEndpoint] = useState('/person');
+  const [authMethod, setAuthMethod] = useState('POST');
+  const [employeesMethod, setEmployeesMethod] = useState('GET');
+  const [customHeaders, setCustomHeaders] = useState('{}');
+  const [employeesQueryParams, setEmployeesQueryParams] = useState('{"start": "0", "length": "1000"}');
 
   useEffect(() => {
     loadSettings();
@@ -56,6 +66,12 @@ export default function RHiDIntegration() {
         setSettings(data);
         setEmail(data.rhid_email);
         setApiUrl(data.rhid_api_url);
+        setAuthEndpoint(data.auth_endpoint || '/login');
+        setEmployeesEndpoint(data.employees_endpoint || '/person');
+        setAuthMethod(data.auth_method || 'POST');
+        setEmployeesMethod(data.employees_method || 'GET');
+        setCustomHeaders(JSON.stringify(data.custom_headers || {}, null, 2));
+        setEmployeesQueryParams(JSON.stringify(data.employees_query_params || {"start": "0", "length": "1000"}, null, 2));
       }
     } catch (error) {
       console.error('Error loading settings:', error);
@@ -87,10 +103,28 @@ export default function RHiDIntegration() {
     setMessage(null);
 
     try {
+      let parsedHeaders = {};
+      let parsedQueryParams = {};
+
+      try {
+        parsedHeaders = JSON.parse(customHeaders);
+        parsedQueryParams = JSON.parse(employeesQueryParams);
+      } catch (e) {
+        setMessage({ type: 'error', text: 'JSON inválido nos headers ou parâmetros' });
+        setLoading(false);
+        return;
+      }
+
       const settingsData = {
         rhid_email: email,
         rhid_password_encrypted: btoa(password),
         rhid_api_url: apiUrl,
+        auth_endpoint: authEndpoint,
+        employees_endpoint: employeesEndpoint,
+        auth_method: authMethod,
+        employees_method: employeesMethod,
+        custom_headers: parsedHeaders,
+        employees_query_params: parsedQueryParams,
         sync_enabled: true,
         updated_at: new Date().toISOString(),
       };
@@ -129,37 +163,49 @@ export default function RHiDIntegration() {
     }
 
     try {
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/rhid-auth`;
+      const authUrl = `${settings.rhid_api_url}${settings.auth_endpoint}`;
+      console.log('Attempting RHiD authentication...');
+      console.log('URL:', authUrl);
+      console.log('Method:', settings.auth_method);
 
-      console.log('Attempting RHiD authentication via Edge Function...');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...settings.custom_headers,
+      };
 
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          email: settings.rhid_email,
-          password: atob(settings.rhid_password_encrypted),
-          apiUrl: settings.rhid_api_url,
-        }),
-      });
+      const requestOptions: RequestInit = {
+        method: settings.auth_method,
+        headers,
+      };
 
+      if (settings.auth_method === 'POST') {
+        const bodyTemplate = settings.auth_body_template || { email: '{email}', password: '{password}' };
+        const body = JSON.parse(
+          JSON.stringify(bodyTemplate)
+            .replace('{email}', settings.rhid_email)
+            .replace('{password}', atob(settings.rhid_password_encrypted))
+        );
+        requestOptions.body = JSON.stringify(body);
+      }
+
+      const response = await fetch(authUrl, requestOptions);
       console.log('Response status:', response.status);
 
-      const data = await response.json();
-      console.log('Response data:', data);
+      const responseText = await response.text();
+      console.log('Response body:', responseText);
 
       if (!response.ok) {
         setMessage({
           type: 'error',
-          text: `Falha na autenticação: ${data.error || 'Erro desconhecido'}`
+          text: `Falha na autenticação: ${response.status} - ${responseText.substring(0, 100)}`
         });
         return null;
       }
 
-      if (!data.accessToken) {
+      const data = JSON.parse(responseText);
+      const accessToken = data.accessToken || data.access_token || data.token;
+
+      if (!accessToken) {
         console.error('No accessToken in response:', data);
         setMessage({ type: 'error', text: 'Token de acesso não encontrado na resposta' });
         return null;
@@ -168,7 +214,7 @@ export default function RHiDIntegration() {
       const { error } = await supabase
         .from('rhid_integration_settings')
         .update({
-          rhid_token: data.accessToken,
+          rhid_token: accessToken,
           token_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         })
         .eq('id', settings.id);
@@ -177,7 +223,7 @@ export default function RHiDIntegration() {
 
       await loadSettings();
       setMessage({ type: 'success', text: 'Autenticação realizada com sucesso!' });
-      return data.accessToken;
+      return accessToken;
     } catch (error) {
       console.error('Authentication error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
@@ -205,27 +251,102 @@ export default function RHiDIntegration() {
         }
       }
 
-      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/rhid-sync-employees`;
+      const queryParams = new URLSearchParams(settings.employees_query_params).toString();
+      const employeesUrl = `${settings.rhid_api_url}${settings.employees_endpoint}?${queryParams}`;
 
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          accessToken: token,
-          apiUrl: settings.rhid_api_url,
-        }),
+      console.log('Fetching employees from:', employeesUrl);
+      console.log('Method:', settings.employees_method);
+
+      const headers: Record<string, string> = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        ...settings.custom_headers,
+      };
+
+      const response = await fetch(employeesUrl, {
+        method: settings.employees_method,
+        headers,
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.error || 'Falha ao sincronizar funcionários');
+        throw new Error('Falha ao buscar funcionários do RHiD');
       }
 
-      const { syncedCount, errorCount, totalEmployees } = data;
+      const responseData = await response.json();
+      const rhidEmployees = responseData.data || responseData || [];
+
+      let syncedCount = 0;
+      let errorCount = 0;
+
+      for (const rhidEmployee of rhidEmployees) {
+        try {
+          const { data: existingEmployee } = await supabase
+            .from('employees')
+            .select('id')
+            .eq('rhid_employee_id', rhidEmployee.id.toString())
+            .maybeSingle();
+
+          const employeeData = {
+            employee_code: rhidEmployee.code?.toString() || '',
+            name: rhidEmployee.name || '',
+            document: rhidEmployee.cpf?.toString() || null,
+            payroll_number: rhidEmployee.registration || '000000',
+            company_payroll_number: '000000',
+            rhid_employee_id: rhidEmployee.id.toString(),
+            last_synced_at: new Date().toISOString(),
+            sync_status: 'synced',
+            active: rhidEmployee.status === 1,
+          };
+
+          if (existingEmployee) {
+            const { error } = await supabase
+              .from('employees')
+              .update(employeeData)
+              .eq('id', existingEmployee.id);
+
+            if (error) throw error;
+
+            await supabase.from('employee_sync_log').insert({
+              employee_id: existingEmployee.id,
+              rhid_employee_id: rhidEmployee.id.toString(),
+              sync_type: 'update',
+              sync_status: 'success',
+              sync_data: rhidEmployee,
+            });
+          } else {
+            const { data: newEmployee, error } = await supabase
+              .from('employees')
+              .insert([employeeData])
+              .select()
+              .single();
+
+            if (error) throw error;
+
+            await supabase.from('employee_sync_log').insert({
+              employee_id: newEmployee.id,
+              rhid_employee_id: rhidEmployee.id.toString(),
+              sync_type: 'create',
+              sync_status: 'success',
+              sync_data: rhidEmployee,
+            });
+          }
+
+          syncedCount++;
+        } catch (error) {
+          console.error(`Error syncing employee ${rhidEmployee.id}:`, error);
+          errorCount++;
+
+          await supabase.from('employee_sync_log').insert({
+            rhid_employee_id: rhidEmployee.id.toString(),
+            sync_type: 'sync',
+            sync_status: 'error',
+            sync_data: rhidEmployee,
+            error_message: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
+      }
+
+      const totalEmployees = rhidEmployees.length;
 
       await supabase
         .from('rhid_integration_settings')
@@ -261,18 +382,18 @@ export default function RHiDIntegration() {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => setShowEdgeFunctions(!showEdgeFunctions)}
+            onClick={() => setShowApiConfig(!showApiConfig)}
             className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
           >
             <Code className="w-4 h-4" />
-            Edge Functions
+            Configurar API
           </button>
           <button
             onClick={() => setShowSettings(!showSettings)}
             className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
           >
             <Settings className="w-4 h-4" />
-            Configurações
+            Credenciais
           </button>
         </div>
       </div>
@@ -288,109 +409,122 @@ export default function RHiDIntegration() {
           </div>
         )}
 
-        {showEdgeFunctions ? (
+        {showApiConfig ? (
           <div className="space-y-6">
             <div className="bg-blue-50 border-l-4 border-blue-500 p-4">
               <p className="text-sm text-blue-800">
-                <strong>Edge Functions</strong> - Configure diretamente como a API do RHiD é chamada.
-                Você pode modificar endpoints, headers, e o processamento de dados aqui.
+                <strong>Configuração da API</strong> - Configure os endpoints e parâmetros para conectar com a API do RHiD
               </p>
             </div>
 
-            <div className="space-y-4">
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
-                <div className="bg-gray-50 px-4 py-3 flex items-center justify-between border-b border-gray-200">
-                  <div>
-                    <h3 className="font-semibold text-gray-900">rhid-auth</h3>
-                    <p className="text-sm text-gray-600">Gerencia a autenticação com o RHiD</p>
-                  </div>
-                  <a
-                    href="/supabase/functions/rhid-auth/index.ts"
-                    target="_blank"
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
-                  >
-                    <Code className="w-4 h-4" />
-                    Ver Código
-                  </a>
-                </div>
-                <div className="p-4 bg-gray-900 text-gray-100 overflow-x-auto">
-                  <pre className="text-sm">
-{`// Localização: supabase/functions/rhid-auth/index.ts
-
-// Você pode modificar:
-// - URL do endpoint RHiD
-// - Headers da requisição
-// - Formato do body
-// - Processamento da resposta
-
-const rhidApiUrl = apiUrl || "https://www.rhid.com.br/v2";
-
-const rhidResponse = await fetch(\`\${rhidApiUrl}/login\`, {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    email: email,
-    password: password,
-  }),
-});`}
-                  </pre>
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Endpoint de Autenticação
+                </label>
+                <input
+                  type="text"
+                  value={authEndpoint}
+                  onChange={(e) => setAuthEndpoint(e.target.value)}
+                  placeholder="/login"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <p className="text-xs text-gray-500 mt-1">Exemplo: /login, /api/auth, /v2/authenticate</p>
               </div>
 
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
-                <div className="bg-gray-50 px-4 py-3 flex items-center justify-between border-b border-gray-200">
-                  <div>
-                    <h3 className="font-semibold text-gray-900">rhid-sync-employees</h3>
-                    <p className="text-sm text-gray-600">Sincroniza funcionários do RHiD para o banco de dados</p>
-                  </div>
-                  <a
-                    href="/supabase/functions/rhid-sync-employees/index.ts"
-                    target="_blank"
-                    className="flex items-center gap-2 px-3 py-1.5 text-sm text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
-                  >
-                    <Code className="w-4 h-4" />
-                    Ver Código
-                  </a>
-                </div>
-                <div className="p-4 bg-gray-900 text-gray-100 overflow-x-auto">
-                  <pre className="text-sm">
-{`// Localização: supabase/functions/rhid-sync-employees/index.ts
-
-// Você pode modificar:
-// - Endpoint de busca de funcionários
-// - Mapeamento de campos
-// - Lógica de sincronização
-
-const rhidResponse = await fetch(
-  \`\${rhidApiUrl}/person?start=0&length=1000\`,
-  {
-    method: "GET",
-    headers: {
-      "Authorization": \`Bearer \${accessToken}\`,
-      "Content-Type": "application/json",
-    },
-  }
-);
-
-const employeeData = {
-  employee_code: rhidEmployee.code?.toString() || "",
-  name: rhidEmployee.name || "",
-  document: rhidEmployee.cpf?.toString() || null,
-  // ... mais campos
-};`}
-                  </pre>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Método de Autenticação
+                </label>
+                <select
+                  value={authMethod}
+                  onChange={(e) => setAuthMethod(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="POST">POST</option>
+                  <option value="GET">GET</option>
+                </select>
               </div>
 
-              <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4">
-                <p className="text-sm text-yellow-800">
-                  <strong>Como editar:</strong> Os arquivos estão localizados em
-                  <code className="mx-1 px-2 py-0.5 bg-yellow-100 rounded">supabase/functions/</code>
-                  Após editar, as mudanças são aplicadas automaticamente.
-                </p>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Endpoint de Funcionários
+                </label>
+                <input
+                  type="text"
+                  value={employeesEndpoint}
+                  onChange={(e) => setEmployeesEndpoint(e.target.value)}
+                  placeholder="/person"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <p className="text-xs text-gray-500 mt-1">Exemplo: /person, /api/employees, /v2/staff</p>
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Método para Funcionários
+                </label>
+                <select
+                  value={employeesMethod}
+                  onChange={(e) => setEmployeesMethod(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="GET">GET</option>
+                  <option value="POST">POST</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Parâmetros de Query (JSON)
+              </label>
+              <textarea
+                value={employeesQueryParams}
+                onChange={(e) => setEmployeesQueryParams(e.target.value)}
+                rows={3}
+                placeholder='{"start": "0", "length": "1000"}'
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Parâmetros que serão adicionados à URL de funcionários
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Headers Customizados (JSON)
+              </label>
+              <textarea
+                value={customHeaders}
+                onChange={(e) => setCustomHeaders(e.target.value)}
+                rows={4}
+                placeholder='{"X-Custom-Header": "value"}'
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Headers adicionais para todas as requisições (opcional)
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  setShowApiConfig(false);
+                  loadSettings();
+                }}
+                className="px-6 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={saveSettings}
+                disabled={loading}
+                className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              >
+                <Save className="w-4 h-4" />
+                {loading ? 'Salvando...' : 'Salvar Configurações'}
+              </button>
             </div>
           </div>
         ) : showSettings ? (

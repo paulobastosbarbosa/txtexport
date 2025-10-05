@@ -125,38 +125,35 @@ export default function RHiDIntegration() {
     }
 
     try {
-      const loginData = {
-        email: settings.rhid_email,
-        password: atob(settings.rhid_password_encrypted),
-      };
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/rhid-auth`;
 
-      console.log('Attempting RHiD authentication...');
-      console.log('URL:', `${settings.rhid_api_url}/login`);
-      console.log('Email:', loginData.email);
+      console.log('Attempting RHiD authentication via Edge Function...');
 
-      const response = await fetch(`${settings.rhid_api_url}/login`, {
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
-        body: JSON.stringify(loginData),
+        body: JSON.stringify({
+          email: settings.rhid_email,
+          password: atob(settings.rhid_password_encrypted),
+          apiUrl: settings.rhid_api_url,
+        }),
       });
 
       console.log('Response status:', response.status);
 
-      const responseText = await response.text();
-      console.log('Response body:', responseText);
+      const data = await response.json();
+      console.log('Response data:', data);
 
       if (!response.ok) {
         setMessage({
           type: 'error',
-          text: `Falha na autenticação: ${response.status} - ${responseText.substring(0, 100)}`
+          text: `Falha na autenticação: ${data.error || 'Erro desconhecido'}`
         });
         return null;
       }
-
-      const data = JSON.parse(responseText);
-      console.log('Parsed response:', data);
 
       if (!data.accessToken) {
         console.error('No accessToken in response:', data);
@@ -204,91 +201,27 @@ export default function RHiDIntegration() {
         }
       }
 
-      const response = await fetch(`${settings.rhid_api_url}/person?start=0&length=1000`, {
-        method: 'GET',
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/rhid-sync-employees`;
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
         },
+        body: JSON.stringify({
+          accessToken: token,
+          apiUrl: settings.rhid_api_url,
+        }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error('Falha ao buscar funcionários do RHiD');
+        throw new Error(data.error || 'Falha ao sincronizar funcionários');
       }
 
-      const responseData = await response.json();
-      const rhidEmployees = responseData.data || responseData || [];
-
-      let syncedCount = 0;
-      let errorCount = 0;
-
-      for (const rhidEmployee of rhidEmployees) {
-        try {
-          const { data: existingEmployee } = await supabase
-            .from('employees')
-            .select('id')
-            .eq('rhid_employee_id', rhidEmployee.id.toString())
-            .maybeSingle();
-
-          const employeeData = {
-            employee_code: rhidEmployee.code?.toString() || '',
-            name: rhidEmployee.name || '',
-            document: rhidEmployee.cpf?.toString() || null,
-            payroll_number: rhidEmployee.registration || '000000',
-            company_payroll_number: '000000',
-            rhid_employee_id: rhidEmployee.id.toString(),
-            last_synced_at: new Date().toISOString(),
-            sync_status: 'synced',
-            active: rhidEmployee.status === 1,
-          };
-
-          if (existingEmployee) {
-            const { error } = await supabase
-              .from('employees')
-              .update(employeeData)
-              .eq('id', existingEmployee.id);
-
-            if (error) throw error;
-
-            await supabase.from('employee_sync_log').insert({
-              employee_id: existingEmployee.id,
-              rhid_employee_id: rhidEmployee.id.toString(),
-              sync_type: 'update',
-              sync_status: 'success',
-              sync_data: rhidEmployee,
-            });
-          } else {
-            const { data: newEmployee, error } = await supabase
-              .from('employees')
-              .insert([employeeData])
-              .select()
-              .single();
-
-            if (error) throw error;
-
-            await supabase.from('employee_sync_log').insert({
-              employee_id: newEmployee.id,
-              rhid_employee_id: rhidEmployee.id.toString(),
-              sync_type: 'create',
-              sync_status: 'success',
-              sync_data: rhidEmployee,
-            });
-          }
-
-          syncedCount++;
-        } catch (error) {
-          console.error(`Error syncing employee ${rhidEmployee.id}:`, error);
-          errorCount++;
-
-          await supabase.from('employee_sync_log').insert({
-            rhid_employee_id: rhidEmployee.id.toString(),
-            sync_type: 'sync',
-            sync_status: 'error',
-            sync_data: rhidEmployee,
-            error_message: error instanceof Error ? error.message : 'Unknown error',
-          });
-        }
-      }
+      const { syncedCount, errorCount, totalEmployees } = data;
 
       await supabase
         .from('rhid_integration_settings')
@@ -514,3 +447,6 @@ export default function RHiDIntegration() {
     </div>
   );
 }
+
+
+export default RHiDIntegration

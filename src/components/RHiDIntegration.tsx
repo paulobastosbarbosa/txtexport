@@ -125,22 +125,44 @@ export default function RHiDIntegration() {
     }
 
     try {
+      const loginData = {
+        email: settings.rhid_email,
+        password: atob(settings.rhid_password_encrypted),
+      };
+
+      console.log('Attempting RHiD authentication...');
+      console.log('URL:', `${settings.rhid_api_url}/login`);
+      console.log('Email:', loginData.email);
+
       const response = await fetch(`${settings.rhid_api_url}/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          email: settings.rhid_email,
-          password: atob(settings.rhid_password_encrypted),
-        }),
+        body: JSON.stringify(loginData),
       });
 
+      console.log('Response status:', response.status);
+
+      const responseText = await response.text();
+      console.log('Response body:', responseText);
+
       if (!response.ok) {
-        throw new Error('Falha na autenticação com RHiD');
+        setMessage({
+          type: 'error',
+          text: `Falha na autenticação: ${response.status} - ${responseText.substring(0, 100)}`
+        });
+        return null;
       }
 
-      const data = await response.json();
+      const data = JSON.parse(responseText);
+      console.log('Parsed response:', data);
+
+      if (!data.accessToken) {
+        console.error('No accessToken in response:', data);
+        setMessage({ type: 'error', text: 'Token de acesso não encontrado na resposta' });
+        return null;
+      }
 
       const { error } = await supabase
         .from('rhid_integration_settings')
@@ -153,10 +175,12 @@ export default function RHiDIntegration() {
       if (error) throw error;
 
       await loadSettings();
+      setMessage({ type: 'success', text: 'Autenticação realizada com sucesso!' });
       return data.accessToken;
     } catch (error) {
       console.error('Authentication error:', error);
-      setMessage({ type: 'error', text: 'Erro ao autenticar com RHiD' });
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      setMessage({ type: 'error', text: `Erro ao autenticar: ${errorMessage}` });
       return null;
     }
   };
@@ -414,14 +438,24 @@ export default function RHiDIntegration() {
               </div>
             </div>
 
-            <button
-              onClick={syncEmployees}
-              disabled={syncing || !settings?.sync_enabled}
-              className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <RefreshCw className={`w-5 h-5 ${syncing ? 'animate-spin' : ''}`} />
-              {syncing ? 'Sincronizando...' : 'Sincronizar Funcionários'}
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={authenticateRHiD}
+                disabled={loading || !settings?.sync_enabled}
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <CheckCircle className="w-5 h-5" />
+                Testar Autenticação
+              </button>
+              <button
+                onClick={syncEmployees}
+                disabled={syncing || !settings?.sync_enabled}
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <RefreshCw className={`w-5 h-5 ${syncing ? 'animate-spin' : ''}`} />
+                {syncing ? 'Sincronizando...' : 'Sincronizar Funcionários'}
+              </button>
+            </div>
 
             {syncLogs.length > 0 && (
               <div>

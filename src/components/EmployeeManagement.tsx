@@ -312,6 +312,7 @@ export default function EmployeeManagement() {
                   <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Nº Folha Empresa</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Nº Matrícula</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Status</th>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-gray-700">Sync RHiD</th>
                   <th className="text-right px-4 py-3 text-sm font-medium text-gray-700">Ações</th>
                 </tr>
               </thead>
@@ -329,6 +330,21 @@ export default function EmployeeManagement() {
                       }`}>
                         {employee.active ? 'Ativo' : 'Inativo'}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {(employee as any).sync_status === 'synced' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded bg-blue-100 text-blue-800">
+                          Sincronizado
+                        </span>
+                      ) : (employee as any).rhid_employee_id ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded bg-yellow-100 text-yellow-800">
+                          Pendente
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-600">
+                          Manual
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-sm text-right">
                       <div className="flex items-center justify-end gap-2">

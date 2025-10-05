@@ -6,9 +6,10 @@ import EventManagement from './components/EventManagement';
 import EventLaunches from './components/EventLaunches';
 import EmployeeManagement from './components/EmployeeManagement';
 import PayrollExport from './components/PayrollExport';
-import { Settings, FileText, Calendar, Users, CheckSquare, Download } from 'lucide-react';
+import RHiDIntegration from './components/RHiDIntegration';
+import { Settings, FileText, Calendar, Users, CheckSquare, Download, Link } from 'lucide-react';
 
-type TabType = 'layouts' | 'events' | 'launches' | 'employees' | 'export';
+type TabType = 'layouts' | 'events' | 'launches' | 'employees' | 'export' | 'rhid';
 
 function App() {
   const [selectedLayout, setSelectedLayout] = useState<ExportLayout | null>(null);
@@ -86,6 +87,17 @@ function App() {
               <Download className="w-4 h-4" />
               Exportar para Folha
             </button>
+            <button
+              onClick={() => setActiveTab('rhid')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors text-sm font-medium ${
+                activeTab === 'rhid'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <Link className="w-4 h-4" />
+              Integração RHiD
+            </button>
           </nav>
         </div>
 
@@ -117,6 +129,10 @@ function App() {
 
         {activeTab === 'export' && (
           <PayrollExport />
+        )}
+
+        {activeTab === 'rhid' && (
+          <RHiDIntegration />
         )}
 
         {activeTab === 'layouts' && !selectedLayout && (

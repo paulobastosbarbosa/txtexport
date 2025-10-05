@@ -102,6 +102,7 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
         .order('code');
 
       if (error) throw error;
+      console.log('Available events loaded:', data);
       setAvailableEvents(data || []);
     } catch (error) {
       console.error('Error loading available events:', error);
@@ -647,18 +648,23 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
                               <option value="dd">dd</option>
                             </select>
                           ) : field.field_source === 'codigo_evento' ? (
-                            <select
-                              value={field.default_value || ''}
-                              onChange={(e) => handleUpdateField(field.id, { default_value: e.target.value })}
-                              className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
-                            >
-                              <option value="">Selecione um código</option>
-                              {availableEvents.map((event) => (
-                                <option key={event.code} value={event.code}>
-                                  {event.code} - {event.description}
-                                </option>
-                              ))}
-                            </select>
+                            <div>
+                              <select
+                                value={field.default_value || ''}
+                                onChange={(e) => handleUpdateField(field.id, { default_value: e.target.value })}
+                                className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
+                              >
+                                <option value="">Selecione um código</option>
+                                {availableEvents.map((event) => (
+                                  <option key={event.code} value={event.code}>
+                                    {event.code} - {event.description}
+                                  </option>
+                                ))}
+                              </select>
+                              {availableEvents.length === 0 && (
+                                <div className="text-xs text-red-600 mt-1">Nenhum evento cadastrado</div>
+                              )}
+                            </div>
                           ) : (field.field_source?.includes('code') || field.field_source?.includes('codigo') ||
                                 field.field_source?.includes('value') || field.field_source?.includes('valor') ||
                                 field.field_source?.includes('empresa') || field.field_source?.includes('company') ||

@@ -355,7 +355,7 @@ export default function LayoutConfigRHiD({ layout }: LayoutConfigRHiDProps) {
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 h-full flex flex-col">
       <div className="p-4 border-b border-gray-200">
-        <h3 className="font-medium text-gray-900">Novo Layout</h3>
+        <h3 className="font-medium text-gray-900">{layoutName || 'Configuração do Layout'}</h3>
         <div className="flex gap-4 mt-4">
           <button
             onClick={() => setActiveTab('campos')}

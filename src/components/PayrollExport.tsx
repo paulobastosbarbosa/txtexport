@@ -219,6 +219,33 @@ export default function PayrollExport() {
     return result;
   };
 
+  const getGroupingKey = (launch: EventLaunch, aggregationFields: LayoutField[]): string => {
+    const date = new Date(launch.launch_date);
+    const year = date.getFullYear().toString();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+
+    const hasYear = aggregationFields.some(f =>
+      f.date_format === 'aaaa' || f.date_format?.includes('aaaa')
+    );
+    const hasMonth = aggregationFields.some(f =>
+      f.date_format === 'mm' || f.date_format?.includes('mm')
+    );
+    const hasDay = aggregationFields.some(f =>
+      f.date_format === 'dd' || f.date_format?.includes('dd')
+    );
+
+    if (hasYear && hasMonth && hasDay) {
+      return `${launch.employee_id}|${launch.event?.code || ''}|${year}${month}${day}`;
+    } else if (hasYear && hasMonth) {
+      return `${launch.employee_id}|${launch.event?.code || ''}|${year}${month}`;
+    } else if (hasYear) {
+      return `${launch.employee_id}|${launch.event?.code || ''}|${year}`;
+    }
+
+    return `${launch.employee_id}|${launch.event?.code || ''}`;
+  };
+
   const handleGenerateExport = async () => {
     if (!selectedLayoutId) {
       alert('Selecione um layout para exportar');
@@ -268,16 +295,54 @@ export default function PayrollExport() {
       const separator = getSeparatorChar(layout.field_separator);
       const lines: string[] = [];
 
-      if (layout.report_type === 'one_event_per_line') {
-        for (const launch of launches) {
-          const lineFields: string[] = [];
+      const aggregationFields = (fields || []).filter(f => f.is_aggregation_field);
 
-          for (const field of fields || []) {
-            const formattedValue = formatField(field, null, launch, layout);
-            lineFields.push(formattedValue);
+      if (layout.report_type === 'one_event_per_line') {
+        if (aggregationFields.length > 0) {
+          const groupedLaunches = new Map<string, EventLaunch[]>();
+
+          for (const launch of launches) {
+            const groupKey = getGroupingKey(launch, aggregationFields);
+            if (!groupedLaunches.has(groupKey)) {
+              groupedLaunches.set(groupKey, []);
+            }
+            groupedLaunches.get(groupKey)!.push(launch);
           }
 
-          lines.push(lineFields.join(separator));
+          for (const [groupKey, groupLaunches] of groupedLaunches) {
+            const firstLaunch = groupLaunches[0];
+            const lineFields: string[] = [];
+
+            const totalQuantity = groupLaunches.reduce((sum, l) => sum + l.quantity, 0);
+            const totalValue = groupLaunches.reduce((sum, l) => {
+              const adjustedVal = applyFactors(l.total_value, layout, l.event?.code || '');
+              return sum + adjustedVal;
+            }, 0);
+
+            const aggregatedLaunch = {
+              ...firstLaunch,
+              quantity: totalQuantity,
+              total_value: totalValue
+            };
+
+            for (const field of fields || []) {
+              const formattedValue = formatField(field, null, aggregatedLaunch, layout);
+              lineFields.push(formattedValue);
+            }
+
+            lines.push(lineFields.join(separator));
+          }
+        } else {
+          for (const launch of launches) {
+            const lineFields: string[] = [];
+
+            for (const field of fields || []) {
+              const formattedValue = formatField(field, null, launch, layout);
+              lineFields.push(formattedValue);
+            }
+
+            lines.push(lineFields.join(separator));
+          }
         }
       } else {
         const employeeMap = new Map<string, EventLaunch[]>();
